@@ -1,0 +1,1 @@
+from skill_extractor.skill_extractor import skills_extractor
