@@ -307,7 +307,6 @@ if (__name__=='__main__'):
 			if i > 2000:
 				visu_transitions(eval_env, transitions, it = i)
 				print("info_train = ", info_train)
-				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 			trajs = []
 			traj = []
 			# if info_train is not None:
@@ -344,6 +343,8 @@ if (__name__=='__main__'):
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
+			if i % 100 == 0:
+				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 
 		next_observation, reward, done, info = goalsetter.step(
             env, observation, action, *env.step(action)
