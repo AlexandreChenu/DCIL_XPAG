@@ -3,17 +3,24 @@ Implementation of DCIL based on jax-based XPAG library.
 
 # Install 
 
-1. Create virtual environment dcil_env from environment.yalm,
+1. Clone DCIL repo,
 
 ```sh
+git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
+```
+
+2. Create virtual environment dcil_env from environment.ylm,
+
+```sh
+cd DCIL_XPAG
 conda env create --name dcil_env --file environment.yaml
 ```
 
-2. Install xpag (+ Jax & Brax),
+3. Install xpag (+ Jax & Brax),
 
 Check this [Repo](https://github.com/perrin-isir/xpag) for instructions. 
 
-3. Install maze environments 
+4. Install maze environments 
 
 ```sh
 https://github.com/AlexandreChenu/gmaze_dcil.git
@@ -23,13 +30,6 @@ and
 
 ```sh
 pip install -e .
-```
-
-4. Clone DCIL repo,
-
-
-```sh
-git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
 ```
 
 # Run Dubins Experiment
