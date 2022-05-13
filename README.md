@@ -13,7 +13,7 @@ git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
 
 ```sh
 cd DCIL_XPAG
-conda env create --name dcil_env --file environment.yaml
+conda env create --name dcil_env --file environment.yml
 ```
 
 3. Install xpag (+ Jax & Brax),
