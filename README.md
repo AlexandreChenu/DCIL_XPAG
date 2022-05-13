@@ -24,16 +24,22 @@ and
 pip install -e .
 ```
 
-3. Clone DCIL repo,
+4. Clone DCIL repo,
 
 
 ```sh
 git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
 ```
 
-# Launch Dubins Experiment
+# Run Dubins Experiment
 
 ```sh
 python test_DCIL_XPAG.py --demo_path ./demos/dubins_convert/1.demo --save_path /path/to/save/path
 ```
+
+# Visual logs produced in /path/to/save/path
+
+- trajs_it_- : training rollouts + skill-chaining evaluation
+- value_skill_-_it_- : value for x-y position of skill starting state for different orientations 
+- transitions_- : sampled training transitions + segment between true desired goal and relabelled desired goal
 
