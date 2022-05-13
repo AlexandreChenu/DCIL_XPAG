@@ -5,12 +5,13 @@ Implementation of DCIL based on jax-based XPAG library.
 
 1. Create virtual environment dcil_env from environment.yalm,
 
-
+```sh
 conda env create --name dcil_env --file environment.yaml
+```
 
-2. Install xpag (requires Jax & Brax),
+2. Install xpag (+ Jax & Brax),
 
-[Repo](https://github.com/perrin-isir/xpag)
+Check this [Repo](https://github.com/perrin-isir/xpag) for instructions. 
 
 3. Install maze environments 
 
