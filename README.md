@@ -12,6 +12,18 @@ conda env create --name dcil_env --file environment.yaml
 
 [Repo](https://github.com/perrin-isir/xpag)
 
+3. Install maze environments 
+
+```sh
+https://github.com/AlexandreChenu/gmaze_dcil.git
+```
+
+and 
+
+```sh
+pip install -e .
+```
+
 3. Clone DCIL repo,
 
 
