@@ -1,5 +1,5 @@
 # DCIL_XPAG
-Implementation of DCIL based on jax-based XPAG library.
+Implementation of DCIL ([paper](https://arxiv.org/abs/2204.07404)) based on jax-based XPAG library.
 
 # Install 
 
