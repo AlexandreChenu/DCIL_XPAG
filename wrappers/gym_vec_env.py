@@ -25,7 +25,6 @@ from typing import Tuple, Union, Optional
 import copy
 
 
-import gym_gfetch
 
 
 def check_goalenv(env) -> bool:
