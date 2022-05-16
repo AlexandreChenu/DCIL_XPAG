@@ -39,7 +39,7 @@ from wrappers.gym_vec_env import gym_vec_env
 from skill_extractor import *
 from samplers import HER_DCIL
 from goalsetters import DCILGoalSetter
-from agents import SAC
+from agents import SAC, TD3
 
 import pdb
 
@@ -101,12 +101,12 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			# print("normalization visu_value 1")
 			norm_obs = env.normalize(obs)
 			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 			)
 			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
 		else:
 			action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 			)
 			value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
 		values.append(value)
@@ -137,12 +137,12 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			# print("normalization visu_value 2")
 			norm_obs = env.normalize(obs)
 			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 			)
 			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
 		else:
 			action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 			)
 			value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
 		values.append(value)
@@ -174,11 +174,11 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			if hasattr(env, "obs_rms"):
 				norm_observation = env.normalize(observation)
 				action = agent.select_action(hstack(norm_observation["observation"], norm_observation["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 				)
 			else:
 				action = agent.select_action(hstack(observation["observation"], observation["desired_goal"]),
-				deterministic=True,
+				eval_mode=True,
 				)
 			observation, _, done, info = goalsetter.step(
 	            env, observation, action, *eval_env.step(action)
@@ -264,7 +264,7 @@ if (__name__=='__main__'):
 	save_episode = True
 	plot_projection = None
 
-	agent = SAC(
+	agent = TD3(
 		env_info['observation_dim'] if not env_info['is_goalenv']
 		else env_info['observation_dim'] + env_info['desired_goal_dim'],
 		env_info['action_dim'],
@@ -332,21 +332,21 @@ if (__name__=='__main__'):
 					norm_observation
 					if not env_info["is_goalenv"]
 					else hstack(norm_observation["observation"], norm_observation["desired_goal"]),
-					deterministic=False,
+					eval_mode=False,
 				)
 				value = agent.value(hstack(norm_observation["observation"], norm_observation["desired_goal"]), action)
-				print("value = ", value)
+				# print("value = ", value)
 			else:
 				action = agent.select_action(
 					observation
 					if not env_info["is_goalenv"]
 					else hstack(observation["observation"], observation["desired_goal"]),
-					deterministic=False,
+					eval_mode=False,
 				)
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
-				print("info_train = ", info_train)
+				# print("info_train = ", info_train)
 			if i % 100 == 0:
 				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 				f_critic_loss.flush()
