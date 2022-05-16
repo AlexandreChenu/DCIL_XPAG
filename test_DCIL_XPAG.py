@@ -335,7 +335,7 @@ if (__name__=='__main__'):
 					deterministic=False,
 				)
 				value = agent.value(hstack(norm_observation["observation"], norm_observation["desired_goal"]), action)
-				print("value = ", value)
+				# print("value = ", value)
 			else:
 				action = agent.select_action(
 					observation
@@ -346,7 +346,7 @@ if (__name__=='__main__'):
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
-				print("info_train = ", info_train)
+				# print("info_train = ", info_train)
 			if i % 100 == 0:
 				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 				f_critic_loss.flush()
