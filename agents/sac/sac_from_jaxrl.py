@@ -504,8 +504,11 @@ def update_critic(
     next_q1, next_q2 = target_critic(batch.next_observations, next_actions)
     next_q = jnp.minimum(next_q1, next_q2)
 
-    target_q = batch.rewards + discount * batch.masks * next_q
+    max_value = jnp.ones(next_q.shape)*2.
+    clipped_next_q = jnp.minimum(next_q, max_value)
 
+    #target_q = batch.rewards + discount * batch.masks * next_q
+    target_q = batch.rewards + discount * batch.masks * clipped_next_q
     # fake_q = target_q.copy() #jnp.zeros(target_q.shape)  ## regularization
     #
     # reg_target_q = jnp.where(target_q<0.,fake_q, target_q)

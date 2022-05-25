@@ -158,6 +158,85 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 	return values
 
+def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
+
+		skill_indices = [0,1,10]
+
+		for skill_indx in skill_indices:
+
+			obs = eval_env.reset()
+			skill = skill_sequence[skill_indx]
+
+			starting_state, _, desired_goal = skill
+			observation, full_state = starting_state
+
+			min_x = (desired_goal[0][0] - 2.)
+			max_x = (desired_goal[0][0] + 2.)
+			min_y = (desired_goal[0][1] - 2.)
+			max_y = (desired_goal[0][1] + 2.)
+			s_x = np.linspace(min_x, max_x, 50)
+			s_y = np.linspace(min_y, max_y, 50)
+
+			states_x, states_y = np.meshgrid(s_x, s_y)
+			orientations = np.linspace(-np.pi/2, np.pi/2, 20)
+
+			values = []
+			for x, y in zip(states_x.flatten(), states_y.flatten()):
+				or_values = []
+				for theta in list(orientations):
+					obs["observation"][0][:] = np.array([x,y,theta])
+					obs["achieved_goal"][0][:] = np.array([x,y])
+					obs["desired_goal"][0][:] = desired_goal[0][:2]
+
+					if hasattr(env, "obs_rms"):
+						# print("normalization visu_value 1")
+						norm_obs = env.normalize(obs)
+						action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
+							deterministic=True,
+						)
+						value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
+					else:
+						action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
+							deterministic=True,
+						)
+						value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
+					or_values.append(value[0])
+
+				values.append(max(or_values))
+
+			# print(states_x.flatten().shape)
+			# print(states_y.flatten().shape)
+			# print(len(values))
+
+			fig, ax = plt.subplots()
+			cb = plt.contourf(states_x, states_y, np.array(values).reshape(states_x.shape), levels=30)
+			fig.colorbar(cb)
+			eval_env.plot(ax)
+			ax.scatter(desired_goal[0][0],desired_goal[0][1])
+
+			circles = []
+			for i in range(0,len(skill_sequence)):
+				skl = skill_sequence[i]
+				st, _, dg = skl
+				obs, full_st = st
+				circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
+				circles.append(circle)
+
+				x = obs[0][0]
+				y = obs[0][1]
+				dx = np.cos(obs[0][2])
+				dy = np.sin(obs[0][2])
+				arrow = plt.arrow(x,y,dx*0.3,dy*0.3,alpha = 0.2,width = 0.04, color="m", zorder=6)
+				ax.add_patch(arrow)
+
+			coll = mc.PatchCollection(circles, color="plum", alpha = 0.5, zorder = 4)
+			ax.add_collection(coll)
+
+			plt.savefig(save_dir + "/visu_value_landscape_" + str(skill_indx) + "_it_" + str(it) + ".png")
+			plt.close(fig)
+
+		return
+
 def eval_traj(env, eval_env, agent, goalsetter):
 	traj = []
 	eval_env.reset()
@@ -305,6 +384,8 @@ if (__name__=='__main__'):
 			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
 			plot_traj(trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
 			visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+			visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+
 			if i > 2000:
 				visu_transitions(eval_env, transitions, it = i)
 				print("info_train = ", info_train)
