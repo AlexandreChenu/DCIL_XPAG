@@ -64,7 +64,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		self.skills_sequence = sseq
+		self.skills_sequence = [sseq[0], sseq[1]]
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
@@ -153,6 +153,8 @@ class DCILGoalSetter(GoalSetter, ABC):
 		## uniform sampling
 		else:
 			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,))
+
+		# print("new_skill_indx = ", new_skill_indx)
 
 		return new_skill_indx.astype(np.intc)
 

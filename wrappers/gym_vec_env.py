@@ -58,7 +58,8 @@ def gym_vec_env_(env_name, num_envs):
     ):
         # no need to create a VecEnv and wrap it if the env accepts 'num_envs' as an
         # argument at __init__ and has a reset_done() method.
-        env = NormalizationWrapper(gym.make(env_name, num_envs=num_envs))
+        # env = NormalizationWrapper(gym.make(env_name, num_envs=num_envs))
+        env = gym.make(env_name, num_envs=num_envs)
         # We force the environment to have a time limit, but
         # env.spec.max_episode_steps cannot exist as it would automatically trigger
         # the TimeLimit wrapper of gym, which does not handle batch envs. We require

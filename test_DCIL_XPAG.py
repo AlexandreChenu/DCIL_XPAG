@@ -5,6 +5,7 @@ import os
 #os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 # os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
+import time
 import jax
 
 print(jax.lib.xla_bridge.get_backend().platform)
@@ -51,7 +52,7 @@ def plot_traj(trajs, traj_eval, skill_sequence, save_dir, it=0):
 			X = [state[i][0] for state in traj]
 			Y = [state[i][1] for state in traj]
 			Theta = [state[i][2] for state in traj]
-			ax.plot(X,Y, marker=".")
+			ax.plot(X,Y, marker=".", c="blue", alpha = 0.7)
 
 			for x, y, t in zip(X,Y,Theta):
 				dx = np.cos(t)
@@ -87,6 +88,7 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	obs = eval_env.reset()
 	#obs["observation"][0] = torch.tensor([ 0.33      ,  0.5       , -0.17363015])
 	skill = skill_sequence[0]
+	# print("skill_0 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state
 	obs["observation"][0][:] = observation[0][:]
@@ -126,6 +128,7 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	obs = eval_env.reset()
 
 	skill = skill_sequence[8]
+	# print("skill_8 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state
 	obs["observation"][0][:] = observation[0][:]
@@ -160,7 +163,7 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
-		skill_indices = [0,1,10]
+		skill_indices = [0,1,3]
 
 		for skill_indx in skill_indices:
 
@@ -278,16 +281,18 @@ def visu_transitions(eval_env, transitions, it=0):
 		next_obs_ag = transitions["next_observation.achieved_goal"][i,:2]
 		X = [obs_ag[0], next_obs_ag[0]]
 		Y = [obs_ag[1], next_obs_ag[1]]
-		if transitions["is_success"][i].max():
-			ax.plot(X,Y, c="green")
+		# if transitions["is_success"][i].max():
+		if transitions["reward"][i].max():
+			ax.plot(X,Y, c="green",marker = "o")
 		else:
-			ax.plot(X,Y,c="red")
+			ax.plot(X,Y,c="black",marker = "o")
 
 		obs_dg = transitions["observation.desired_goal"][i,:2]
 		next_obs_dg = transitions["next_observation.desired_goal"][i,:2]
 		X = [obs_dg[0], next_obs_dg[0]]
 		Y = [obs_dg[1], next_obs_dg[1]]
-		if transitions["is_success"][i].max():
+		# if transitions["is_success"][i].max():
+		if transitions["reward"][i].max():
 			ax.plot(X,Y, c="grey")
 		else:
 			ax.plot(X,Y,c="brown")
@@ -368,9 +373,11 @@ if (__name__=='__main__'):
 
 	for i in range(max_steps // env_info["num_envs"]):
 		traj.append(observation["observation"])
+		# print("\n")
 
 		if not i % max(evaluate_every_x_steps // env_info["num_envs"], 1):
 			print("i : ", i)
+			# t1_logs = time.time()
 			print("")
 			# single_rollout_eval(
 			# 	i * env_info["num_envs"],
@@ -386,9 +393,12 @@ if (__name__=='__main__'):
 			visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 
-			if i > 2000:
-				visu_transitions(eval_env, transitions, it = i)
-				print("info_train = ", info_train)
+			# t2_logs = time.time()
+			# print("logs time = ", t2_logs - t1_logs)
+
+			# if i > 2000:
+				# visu_transitions(eval_env, transitions, it = i)
+				# print("info_train = ", info_train)
 			trajs = []
 			traj = []
 			# if info_train is not None:
@@ -407,6 +417,7 @@ if (__name__=='__main__'):
 		if i * env_info["num_envs"] < start_training_after_x_steps:
 			action = env_info["action_space"].sample()
 		else:
+			# t1_a_select = time.time()
 			if hasattr(eval_env, "obs_rms"):
 				norm_observation = env.normalize(observation)
 				action = agent.select_action(
@@ -424,17 +435,26 @@ if (__name__=='__main__'):
 					else hstack(observation["observation"], observation["desired_goal"]),
 					deterministic=False,
 				)
+			# t2_a_select = time.time()
+			# print("action selection time = ", t2_a_select - t1_a_select)
+
+			# t1_train = time.time()
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
-				# print("info_train = ", info_train)
+			# t2_train = time.time()
+			# print("training time = ", t2_train - t1_train)
+
 			if i % 100 == 0:
 				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 				f_critic_loss.flush()
 
+		# t1_step = time.time()
 		next_observation, reward, done, info = goalsetter.step(
             env, observation, action, *env.step(action)
         )
+		# t2_step = time.time()
+		# print("step time = ", t2_step - t1_step)
 
 		# print("done = ", done)
 
@@ -455,9 +475,11 @@ if (__name__=='__main__'):
 
 		buffer_.insert(step)
 
-		observation = next_observation
+		observation = next_observation.copy()
 
+		# t1_reset_time = time.time()
 		if done.max():
+			traj.append(observation["observation"])
 			num_rollouts += 1
 			if info["is_success"].max() == 1:
 				num_success += 1
@@ -468,6 +490,8 @@ if (__name__=='__main__'):
 			if len(traj) > 0:
 				trajs.append(traj)
 				traj = []
+		# t2_reset_time = time.time()
+		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()
 	f_critic_loss.close()
