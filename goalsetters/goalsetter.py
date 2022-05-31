@@ -64,7 +64,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		self.skills_sequence = [sseq[0], sseq[1]]
+		self.skills_sequence = sseq
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
@@ -152,7 +152,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 
 		## uniform sampling
 		else:
-			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,))
+			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,)).reshape(n_envs,1)
 
 		# print("new_skill_indx = ", new_skill_indx)
 
@@ -199,7 +199,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 
 	def reset(self, env, observation, eval_mode=False):
 		## reset to first skill
-		self.curr_indx = np.zeros((env.num_envs,)).astype(np.intc)
+		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
 		## recover skill
 		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
@@ -208,11 +208,11 @@ class DCILGoalSetter(GoalSetter, ABC):
 		reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
 
 		## set skill
-		do_reset_state = np.ones((env.num_envs,))
+		do_reset_state = np.ones((env.num_envs,1))
 		env.set_state(reset_full_states, do_reset_state)
-		do_reset_max_episode_steps = np.ones((env.num_envs,))
+		do_reset_max_episode_steps = np.ones((env.num_envs,1))
 		env.set_max_episode_steps(reset_max_episode_steps, do_reset_max_episode_steps)
-		do_reset_goal = np.ones((env.num_envs,))
+		do_reset_goal = np.ones((env.num_envs,1))
 		env.set_goal(reset_goals, do_reset_goal)
 
 		return env.get_observation()
@@ -259,6 +259,11 @@ class DCILGoalSetter(GoalSetter, ABC):
 		## recover skill
 		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
 		reset_full_states = self.skills_full_states[self.curr_indx.reshape(-1),0,:]
+
+		# print("self.skills_full_states.shape = ", self.skills_full_states.shape)
+		# print("reset_full_states.shape = ", reset_full_states.shape)
+		# print("self.curr_indx.shape = ", self.curr_indx.shape)
+
 		reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
 		reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
 

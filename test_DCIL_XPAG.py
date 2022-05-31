@@ -311,7 +311,7 @@ if (__name__=='__main__'):
 	env_args = {}
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
-	num_envs = 1  # the number of rollouts in parallel during training
+	num_envs = 15  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GMazeGoalDubins-v0', num_envs)
 	# print("env = ", env)
 
