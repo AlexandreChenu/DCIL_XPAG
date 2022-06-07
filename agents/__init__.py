@@ -1,4 +1,5 @@
 # from agents.sac.sac import SAC
+from agents.sac.sac_variant import SAC_variant
 from agents.sac.sac import SAC
 # from agents.sac.sac_torch import SACTORCH
 # from agents.td3.td3 import TD3

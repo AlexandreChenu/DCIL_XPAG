@@ -1,1 +1,2 @@
 from goalsetters.goalsetter import DCILGoalSetter
+from goalsetters.goalsetter_variant import DCILGoalSetter_variant
