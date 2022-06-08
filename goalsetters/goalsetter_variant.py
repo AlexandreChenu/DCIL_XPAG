@@ -10,9 +10,9 @@ from xpag.goalsetters import GoalSetter
 
 import numpy as np
 
-class DCILGoalSetter(GoalSetter, ABC):
-	def __init__(self, do_overshoot = False):
-		super().__init__("DCILGoalSetter")
+class DCILGoalSetter_variant(GoalSetter, ABC):
+	def __init__(self, do_overshoot = True):
+		super().__init__("DCILGoalSetter_variant")
 
 		self.skills_sequence = []
 		self.nb_skills = 0
@@ -38,9 +38,18 @@ class DCILGoalSetter(GoalSetter, ABC):
 	):
 
 		## get next skill goal for bonus reward computation
-		next_skill_indices, info['next_skill_avail'] = self.next_skill_indx()
+		next_skill_indices, info['next_skill_avail'], next_next_skill_indices, info["next_next_skill_avail"]= self.next_skill_indx()
 		next_skill_indices = np.where(info['next_skill_avail'] == 1, next_skill_indices, self.curr_indx)
+		next_next_skill_indices = np.where(info['next_next_skill_avail'] == 1, next_next_skill_indices, next_skill_indices)
+
 		info["next_skill_goal"] = self.skills_goals[next_skill_indices.reshape(-1),0,:]
+		info["next_next_skill_goal"] = self.skills_goals[next_next_skill_indices.reshape(-1),0,:]
+
+		new_obs = self.get_observation(env)
+		# info["next_skill_goal"] = new_obs["next_skill_goal"].copy()
+
+		assert new_obs["next_skill_goal"].all() == info["next_skill_goal"].all()
+		assert new_obs["next_next_skill_goal"].all() == info["next_next_skill_goal"].all()
 
 		self.last_info = info.copy()
 		self.last_done = done
@@ -48,7 +57,8 @@ class DCILGoalSetter(GoalSetter, ABC):
 		assert reward.max() <= 1
 		assert reward.min() >= 0
 
-		return new_observation, reward, done, info
+		# return new_observation, reward, done, info
+		return new_obs, reward, done, info
 
 	def write_config(self, output_file: str):
 		pass
@@ -64,7 +74,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		#self.skills_sequence = [sseq[0], sseq[1], sseq[2]]
+		# self.skills_sequence = [sseq[0], sseq[1], sseq[2]]
 		self.skills_sequence = sseq
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
@@ -153,7 +163,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 
 		## uniform sampling
 		else:
-			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,)).reshape(n_envs,1)
+			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,1))
 
 		# print("new_skill_indx = ", new_skill_indx)
 
@@ -161,7 +171,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 
 	def shift_skill(self, env):
 		is_done = self.last_done
-		next_skill_indices, next_skill_avail = self.next_skill_indx()
+		next_skill_indices, next_skill_avail,_,_ = self.next_skill_indx()
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx
 		self.curr_indx = np.where(next_skill_avail == 1, next_skill_indices, self.curr_indx)
@@ -176,22 +186,36 @@ class DCILGoalSetter(GoalSetter, ABC):
 		do_reset_goal = is_done.copy()
 		env.set_goal(reset_goals, do_reset_goal)
 
-		return env.get_observation()
+		return self.get_observation(env), next_skill_avail
 
-	def next_skill_indx(self):
+	def next_skill_indx(self, eval=True):
 		curr_indx = self.curr_indx.copy()
+
 		next_indx = curr_indx + 1
 		next_skill_avail = (next_indx < self.nb_skills).astype(np.intc)
-		return next_indx, next_skill_avail
+
+		next_next_indx = curr_indx + 2
+		next_next_skill_avail = (next_next_indx < self.nb_skills).astype(np.intc)
+
+		return next_indx, next_skill_avail, next_next_indx, next_next_skill_avail
+
 
 	def _select_skill_indx(self, is_success, n_envs):
 		"""
 		Select skills (starting state, budget and goal)
 		"""
+
 		sampled_skill_indices = self.sample_skill_indx(n_envs) ## return tensor of new indices
-		next_skill_indices, next_skill_avail = self.next_skill_indx() ## return tensor of next skills indices
+		next_skill_indices, next_skill_avail,_,_ = self.next_skill_indx() ## return tensor of next skills indices
+
+		# r = np.random.rand()
+		#
+		# if r > 0.8:
+		# 	next_skill_indices += 1
+		# 	next_skill_avail = (next_skill_indices < self.nb_skills).astype(np.intc)
 
 		overshoot_possible = np.logical_and(is_success, next_skill_avail).astype(np.intc) * int(self.do_overshoot)
+		# print("overshoot_possible = ", overshoot_possible)
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx
 		selected_skill_indices = np.where(overshoot_possible == 1, next_skill_indices, sampled_skill_indices)
@@ -216,7 +240,7 @@ class DCILGoalSetter(GoalSetter, ABC):
 		do_reset_goal = np.ones((env.num_envs,1))
 		env.set_goal(reset_goals, do_reset_goal)
 
-		return env.get_observation()
+		return self.get_observation(env)
 
 	def add_success_and_failures(self, is_done, is_success):
 
@@ -249,31 +273,44 @@ class DCILGoalSetter(GoalSetter, ABC):
 		is_done = self.last_done
 		is_success = self.last_info["is_success"] ## array of booleans
 
+		# print("\nis_done = ", is_done)
+		# print("is_success = ", is_success)
+
 		## update skills scores
 		# print("\n skills_results before = ", self.L_skills_results)
 		self.add_success_and_failures(is_done, is_success)
 		# print("skills_results after = ", self.L_skills_results)
 
+		# print("current indx = ", self.curr_indx)
 		selected_skill_indices, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
 		self.curr_indx = np.where(is_done==1, selected_skill_indices, self.curr_indx)
+		# print("next indx = ", self.curr_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
 		reset_full_states = self.skills_full_states[self.curr_indx.reshape(-1),0,:]
-
-		# print("self.skills_full_states.shape = ", self.skills_full_states.shape)
-		# print("reset_full_states.shape = ", reset_full_states.shape)
-		# print("self.curr_indx.shape = ", self.curr_indx.shape)
-
 		reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
 		reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
 
 		## set skill
 		do_reset_state = np.logical_and(is_done, np.logical_not(overshoot_possible)).astype(np.intc)
+		# print("do_reset_state = ", do_reset_state)
 		env.set_state(reset_full_states, do_reset_state)
 		do_reset_max_episode_steps = is_done.copy()
 		env.set_max_episode_steps(reset_max_episode_steps, do_reset_max_episode_steps)
 		do_reset_goal = is_done.copy()
 		env.set_goal(reset_goals, do_reset_goal)
 
-		return env.get_observation()
+		return self.get_observation(env)
+
+	def get_observation(self, env):
+		obs = env.get_observation()
+
+		next_skill_indices, next_skill_avail, next_next_skill_indices, next_next_skill_avail = self.next_skill_indx()
+		next_skill_indices = np.where(next_skill_avail == 1, next_skill_indices, self.curr_indx)
+		next_next_skill_indices = np.where(next_next_skill_avail == 1, next_next_skill_indices, next_skill_indices)
+		obs["next_skill_goal"] = self.skills_goals[next_skill_indices.reshape(-1),0,:]
+		obs["next_next_skill_goal"] = self.skills_goals[next_next_skill_indices.reshape(-1),0,:]
+
+
+		return obs

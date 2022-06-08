@@ -77,12 +77,12 @@ class skills_extractor():
 		Clean the demonstration trajectory according to hyperparameter eps_dist.
 		"""
 		skills_sequence = []
-		self.env.set_state(L_sim_states[0], np.ones((1,)))
+		self.env.set_state(L_observations[0], np.ones((1,)))
 
 		# print("self.env.state = ", self.env.state)
 
 		curr_state = self.env.get_state()
-		curr_starting_state = (curr_state.copy(), L_sim_states[0])
+		curr_starting_state = (curr_state.copy(), curr_state.copy())
 
 		i = 0
 		while i < len(L_sim_states)-1:
@@ -91,7 +91,7 @@ class skills_extractor():
 
 			# cumulative distance
 			while sum_dist <= self.eps_state and i + k < len(L_observations) - 1:
-				self.env.set_state(L_sim_states[i+k], np.ones((1,)))
+				self.env.set_state(L_observations[i+k], np.ones((1,)))
 				shifted_state = self.env.get_state()
 				# print("shifted_state = ", shifted_state)
 				# print("curr_state = ", curr_state)
@@ -101,8 +101,8 @@ class skills_extractor():
 				k += 1
 
 			skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
-			i = i + k
-			curr_starting_state = (curr_state, L_sim_states[i])
+			i = i + k 
+			curr_starting_state = (curr_state, curr_state)
 
 		# print("len(skills_sequence) = ", len(skills_sequence))
 		return skills_sequence
