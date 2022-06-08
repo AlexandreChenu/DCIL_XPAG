@@ -33,48 +33,63 @@ from matplotlib import collections as mc
 import numpy as np
 import copy
 
-import gym_gmazes
+import gym_gfetch
 
 ## DCIL versions
-from wrappers.gym_vec_env import gym_vec_env
-from skill_extractor import *
+from wrappers.gym_vec_env_mujoco import gym_vec_env
+from skill_extractor import skills_extractor_Mj
 from samplers import HER_DCIL
-from goalsetters import DCILGoalSetter
+from goalsetters import DCILGoalSetterMj
 from agents import SAC
 
 import pdb
 
-def plot_traj(trajs, traj_eval, skill_sequence, save_dir, it=0):
-	fig, ax = plt.subplots()
-	env.plot(ax)
-	for traj in trajs:
-		for i in range(traj[0].shape[0]):
-			X = [state[i][0] for state in traj]
-			Y = [state[i][1] for state in traj]
-			Theta = [state[i][2] for state in traj]
-			ax.plot(X,Y, marker=".", c="blue", alpha = 0.7)
+def visu_success_zones(eval_env, skill_sequence, ax):
+	"""
+	Visualize success zones as sphere of radius eps_success around skill-goals
+	"""
 
-			for x, y, t in zip(X,Y,Theta):
-				dx = np.cos(t)
-				dy = np.sin(t)
-				#arrow = plt.arrow(x,y,dx*0.1,dy*0.1,alpha = 0.6,width = 0.01, zorder=6)
-
-	X_eval = [state[0][0] for state in traj_eval]
-	Y_eval = [state[0][1] for state in traj_eval]
-	ax.plot(X_eval, Y_eval, c = "red")
-
-	circles = []
 	for skill in skill_sequence:
 		starting_state, _, _ = skill
 		obs, full_state = starting_state
-		# print("obs = ", obs)
-		circle = plt.Circle((obs[0][0], obs[0][1]), 0.1, color='m', alpha = 0.6)
-		circles.append(circle)
-		# ax.add_patch(circle)
-	coll = mc.PatchCollection(circles, color="plum", zorder = 4)
-	ax.add_collection(coll)
+		goal = eval_env.project_to_goal_space(obs)
 
-	plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
+		u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+
+		x = goal[0] + 0.05*np.cos(u)*np.sin(v)
+		y = goal[1] + 0.05*np.sin(u)*np.sin(v)
+		z = goal[2] + 0.05*np.cos(v)
+		ax.plot_wireframe(x, y, z, color="blue", alpha = 0.1)
+
+	return
+
+def plot_traj(eval_env, trajs, traj_eval, skill_sequence, save_dir, it=0):
+	fig = plt.figure()
+	ax = fig.add_subplot(projection='3d')
+
+	for traj in trajs:
+		# print("traj = ", traj)
+		for i in range(traj[0].shape[0]):
+			X = [eval_env.project_to_goal_space(state[i])[0] for state in traj]
+			Y = [eval_env.project_to_goal_space(state[i])[1] for state in traj]
+			Z = [eval_env.project_to_goal_space(state[i])[2] for state in traj]
+			ax.plot(X,Y,Z, c="blue", alpha = 0.7)
+			X_obj = [eval_env.project_to_goal_space(state[i])[3] for state in traj]
+			Y_obj = [eval_env.project_to_goal_space(state[i])[4] for state in traj]
+			Z_obj = [eval_env.project_to_goal_space(state[i])[5] for state in traj]
+			ax.plot(X_obj,Y_obj,Z_obj, c="green", alpha = 0.7)
+
+	X_eval = [eval_env.project_to_goal_space(state[0])[0] for state in traj_eval]
+	Y_eval = [eval_env.project_to_goal_space(state[0])[1] for state in traj_eval]
+	Z_eval = [eval_env.project_to_goal_space(state[0])[2] for state in traj_eval]
+	ax.plot(X_eval, Y_eval, Z_eval, c = "red")
+
+	visu_success_zones(eval_env, skill_sequence, ax)
+
+	for _azim in range(45, 360, 90):
+		ax.view_init(azim=_azim)
+		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
+	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
 	plt.close(fig)
 	return
 
@@ -263,8 +278,8 @@ def eval_traj(env, eval_env, agent, goalsetter):
 				deterministic=True,
 				)
 			observation, _, done, info = goalsetter.step(
-	            env, observation, action, *eval_env.step(action)
-	        )
+				env, observation, action, *eval_env.step(action)
+			)
 			# print("done = ", done)
 			if done.max():
 				observation = goalsetter.shift_skill(eval_env)
@@ -312,14 +327,14 @@ if (__name__=='__main__'):
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
 	num_envs = 1  # the number of rollouts in parallel during training
-	env, eval_env, env_info = gym_vec_env('GMazeGoalDubins-v0', num_envs)
-	# print("env = ", env)
+	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs)
+	print("env = ", env)
 
-	s_extractor = skills_extractor(parsed_args.demo_path, eval_env)
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env)
 
-	goalsetter = DCILGoalSetter()
+	goalsetter = DCILGoalSetterMj()
 	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)
-	eval_goalsetter = DCILGoalSetter()
+	eval_goalsetter = DCILGoalSetterMj()
 	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)
 
 	# print(goalsetter.skills_observations)
@@ -332,7 +347,7 @@ if (__name__=='__main__'):
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
 	max_steps = 100_000
 	evaluate_every_x_steps = 2_000
-	save_agent_every_x_steps = 100_000
+	save_agent_every_x_steps = 50_000
 
 	## create log dir
 	now = datetime.now()
@@ -354,7 +369,7 @@ if (__name__=='__main__'):
 		env_info['action_dim'],
 		{}
 	)
-	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL(env.compute_reward, env)
+	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL(env.envs[0].compute_reward, env)
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
 		buffer_size=1_000_000,
@@ -372,7 +387,8 @@ if (__name__=='__main__'):
 	num_rollouts = 0
 
 	for i in range(max_steps // env_info["num_envs"]):
-		traj.append(observation["observation"])
+		# print("learn: ", eval_env.project_to_goal_space(observation["observation"][0]))
+		traj.append(observation["observation"].copy())
 		# print("\n")
 
 		if not i % max(evaluate_every_x_steps // env_info["num_envs"], 1):
@@ -388,10 +404,10 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
-			plot_traj(trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
-			visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
-			visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+			# traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
+			plot_traj(eval_env, trajs, [], s_extractor.skills_sequence, save_dir, it=i)
+			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
@@ -417,7 +433,7 @@ if (__name__=='__main__'):
 		if i * env_info["num_envs"] < start_training_after_x_steps:
 			action = env_info["action_space"].sample()
 		else:
-			# t1_a_select = time.time()
+			t1_a_select = time.time()
 			if hasattr(eval_env, "obs_rms"):
 				norm_observation = env.normalize(observation)
 				action = agent.select_action(
@@ -435,14 +451,14 @@ if (__name__=='__main__'):
 					else hstack(observation["observation"], observation["desired_goal"]),
 					deterministic=False,
 				)
-			# t2_a_select = time.time()
+			t2_a_select = time.time()
 			# print("action selection time = ", t2_a_select - t1_a_select)
 
-			# t1_train = time.time()
+			t1_train = time.time()
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
-			# t2_train = time.time()
+			t2_train = time.time()
 			# print("training time = ", t2_train - t1_train)
 
 			if i % 100 == 0:
@@ -451,10 +467,10 @@ if (__name__=='__main__'):
 
 		t1_step = time.time()
 		next_observation, reward, done, info = goalsetter.step(
-            env, observation, action, *env.step(action)
-        )
+			env, observation, action, *env.step(action)
+		)
 		t2_step = time.time()
-		print("step time = ", t2_step - t1_step)
+		# print("step time = ", t2_step - t1_step)
 
 		# print("done = ", done)
 
@@ -468,6 +484,9 @@ if (__name__=='__main__'):
 			"done": done,
 			"next_observation": next_observation,
 		}
+
+		# print("step = ", step)
+
 		if env_info["is_goalenv"]:
 			step["is_success"] = info["is_success"]
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
@@ -477,9 +496,9 @@ if (__name__=='__main__'):
 
 		observation = next_observation.copy()
 
-		# t1_reset_time = time.time()
+		t1_reset_time = time.time()
 		if done.max():
-			traj.append(observation["observation"])
+			traj.append(observation["observation"].copy())
 			num_rollouts += 1
 			if info["is_success"].max() == 1:
 				num_success += 1
@@ -490,7 +509,7 @@ if (__name__=='__main__'):
 			if len(traj) > 0:
 				trajs.append(traj)
 				traj = []
-		# t2_reset_time = time.time()
+		t2_reset_time = time.time()
 		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()
