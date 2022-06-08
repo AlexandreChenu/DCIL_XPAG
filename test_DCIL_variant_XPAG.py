@@ -368,7 +368,7 @@ if (__name__=='__main__'):
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 5
 	max_steps = 100_000
-	evaluate_every_x_steps = 500
+	evaluate_every_x_steps = 1000
 	save_agent_every_x_steps = 100_000
 
 	## create log dir
