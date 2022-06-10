@@ -46,7 +46,7 @@ class SAC_variant(Agent, ABC):
 			"actor_lr": 0.001,
 			"backup_entropy": False,
 			"critic_lr": 0.001,
-			"discount": 0.99,
+			"discount": 0.9,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
 			"init_temperature": 0.001,

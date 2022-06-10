@@ -100,8 +100,9 @@ class skills_extractor():
 				curr_state = shifted_state.copy()
 				k += 1
 
-			skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
-			i = i + k 
+			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
+			skills_sequence.append((curr_starting_state, 30, shifted_state.copy()))
+			i = i + k
 			curr_starting_state = (curr_state, curr_state)
 
 		# print("len(skills_sequence) = ", len(skills_sequence))
