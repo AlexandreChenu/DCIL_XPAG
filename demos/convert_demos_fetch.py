@@ -25,8 +25,13 @@ def get_demo_fetch( demo_path):
         print("demo.keys() = ", demo.keys())
     print("len(demo['obs']) = ", len(demo["obs"]))
 
-    for obs, sim_state in zip(demo["obs"], demo["checkpoints"]):
-        print("obs = ", obs)
+    for obs, sim_state in zip(demo["obs"][1:], demo["checkpoints"]): ## shift of one between obs & checkpoints
+        # print("obs = ", obs[:10])
+        # print("sim_state = ", sim_state[3][:10])
+        # print("obs == sim_state ", obs == sim_state[3])
+
+        assert (obs == sim_state[3]).all()
+
         L_observations.append(np.array(obs)[:268])
         sim_state = (sim_state[0],
                         sim_state[1],
@@ -62,8 +67,8 @@ def save_demo_fetch(save_path, L_observations, L_sim_states):
     return
 
 if __name__ == '__main__':
-    demo_path = "./fetch/1.demo"
-    save_path = "./fetch_convert/1.demo"
+    demo_path = "./fetch/6.demo"
+    save_path = "./fetch_convert/6.demo"
 
     L_observations, L_sim_states = get_demo_fetch(demo_path)
 

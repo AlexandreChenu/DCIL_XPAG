@@ -228,6 +228,11 @@ class DCILVecWrapper(gym.Wrapper):
         for i, (env, reset_max_episode_step, do_reset_max_episode_step) in enumerate(zip(self.envs, reset_max_episode_steps, do_reset_max_episode_steps.flatten())):
             env.set_max_episode_steps(reset_max_episode_step, do_reset_max_episode_step)
 
+    def get_max_episode_steps(self, **kwargs):
+        results = self.env.call("get_max_episode_steps", **kwargs)
+
+        return np.concatenate(results)
+
     def get_observation(self, **kwargs):
 
         results = self.env.call("get_observation", **kwargs)
@@ -261,6 +266,8 @@ class DCILVecWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
+
+        # print("observation vec_env = ", obs["observation"][0][:15])
 
         # info = {
         #     "info_tuple": info_,

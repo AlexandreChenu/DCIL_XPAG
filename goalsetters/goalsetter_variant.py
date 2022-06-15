@@ -286,11 +286,23 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		self.curr_indx = np.where(is_done==1, selected_skill_indices, self.curr_indx)
 		# print("next indx = ", self.curr_indx)
 
+		r = np.random.rand(is_done.shape[0], is_done.shape[1])
+
+		start_indx = self.curr_indx.copy() ## skipping should not impact start state
+		skipping_indx = np.where(r>0.9, self.curr_indx+1, self.curr_indx) ## skipping for 10% of rollouts
+		self.curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, self.curr_indx)
+
 		## recover skill
-		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
-		reset_full_states = self.skills_full_states[self.curr_indx.reshape(-1),0,:]
+		reset_observations = self.skills_observations[start_indx.reshape(-1),0,:]
+		reset_full_states = self.skills_full_states[start_indx.reshape(-1),0,:]
 		reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
 		reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
+
+		## recover skill
+		# reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
+		# reset_full_states = self.skills_full_states[self.curr_indx.reshape(-1),0,:]
+		# reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
+		# reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
 
 		## set skill
 		do_reset_state = np.logical_and(is_done, np.logical_not(overshoot_possible)).astype(np.intc)

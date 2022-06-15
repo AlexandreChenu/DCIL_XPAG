@@ -504,7 +504,7 @@ def update_critic(
     next_q1, next_q2 = target_critic(batch.next_observations, next_actions)
     next_q = jnp.minimum(next_q1, next_q2)
 
-    max_value = jnp.ones(next_q.shape)*18.
+    max_value = jnp.ones(next_q.shape)*12.
     max_clipped_next_q = jnp.minimum(next_q, max_value)
     min_value = jnp.zeros(next_q.shape)
     clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)

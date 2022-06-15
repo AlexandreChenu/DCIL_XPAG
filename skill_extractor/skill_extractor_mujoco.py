@@ -16,7 +16,7 @@ import gym
 import gym_gfetch
 
 class skills_extractor_Mj():
-	def __init__(self, demo_path, env, eps_state=1., beta=2.):
+	def __init__(self, demo_path, env, eps_state=0.5, beta=2.):
 
 		self.env = env
 		self.num_envs = env.num_envs
@@ -107,9 +107,19 @@ class skills_extractor_Mj():
 				curr_state = shifted_state.copy()
 				k += 1
 
-			skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
+			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
+			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 30), shifted_state.copy()))
 			i = i + k
-			curr_starting_state = (curr_state, L_sim_states[i])
+
+			## check that curr_state corresponds to observation
+			assert (curr_state == L_observations[i-1]).all()
+			# print("curr_state == ")
+			# print("\ncurr_state[:10] = ", curr_state[:10])
+			# print("L_observations[i][:10] = ", L_observations[i][:10])
+			# print("L_sim_states[i][3][:10] = ", L_sim_states[i][3][:10])
+			assert (L_observations[i] == L_sim_states[i][3]).all()
+
+			curr_starting_state = (curr_state, L_sim_states[i-1])
 
 		# print("len(skills_sequence) = ", len(skills_sequence))
 		return skills_sequence
