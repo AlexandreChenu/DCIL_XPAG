@@ -357,7 +357,7 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 200_000
+	max_steps = 300_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
@@ -425,9 +425,9 @@ if (__name__=='__main__'):
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
 
-			# if i > 2000:
+			if i > 2000:
 				# visu_transitions(eval_env, transitions, it = i)
-				# print("info_train = ", info_train)
+				print("info_train = ", info_train)
 			trajs = []
 			traj = []
 			# if info_train is not None:

@@ -54,8 +54,10 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		self.last_info = info.copy()
 		self.last_done = done
 
-		assert reward.max() <= 1
-		assert reward.min() >= 0
+		# assert reward.max() <= 1
+		# assert reward.min() >= 0
+
+		assert reward.max() <= 0
 
 		# return new_observation, reward, done, info
 		return new_obs, reward, done, info

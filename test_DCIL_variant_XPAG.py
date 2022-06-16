@@ -352,6 +352,9 @@ if (__name__=='__main__'):
 	env, eval_env, env_info = gym_vec_env('GMazeGoalDubins-v0', num_envs)
 	# print("env = ", env)
 
+	print("env.num_envs = ", env.num_envs)
+	print("eval_env.num_envs = ", eval_env.num_envs)
+
 	s_extractor = skills_extractor(parsed_args.demo_path, eval_env)
 
 	goalsetter = DCILGoalSetter_variant()

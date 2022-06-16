@@ -504,19 +504,26 @@ def update_critic(
     next_q1, next_q2 = target_critic(batch.next_observations, next_actions)
     next_q = jnp.minimum(next_q1, next_q2)
 
-    max_value = jnp.ones(next_q.shape)*12.
-    max_clipped_next_q = jnp.minimum(next_q, max_value)
-    min_value = jnp.zeros(next_q.shape)
-    clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
+    ## R \in {0,1}
+    # max_value = jnp.ones(next_q.shape)*18.
+    # max_clipped_next_q = jnp.minimum(next_q, max_value)
+    # min_value = jnp.zeros(next_q.shape)
+    # clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
 
-    #target_q = batch.rewards + discount * batch.masks * next_q
+    ## R \in {-1,0}
+    max_value = jnp.zeros(next_q.shape)
+    clipped_next_q = jnp.minimum(next_q, max_value)
+    # min_value = jnp.zeros(next_q.shape)
+    # clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
+
+    # target_q = batch.rewards + discount * batch.masks * next_q
     target_q = batch.rewards + discount * batch.masks * clipped_next_q
     # fake_q = target_q.copy() #jnp.zeros(target_q.shape)  ## regularization
     #
     # reg_target_q = jnp.where(target_q<0.,fake_q, target_q)
 
-    #if backup_entropy:
-        #target_q -= discount * batch.masks * temp() * next_log_probs
+    # if backup_entropy:
+    #     target_q -= discount * batch.masks * temp() * next_log_probs
 
     def critic_loss_fn(critic_params: Params) -> Tuple[jnp.ndarray, InfoDict]:
         q1, q2 = critic.apply_fn(

@@ -58,8 +58,13 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 		self.last_info = info.copy()
 		self.last_done = done
 
-		assert reward.max() <= 1
-		assert reward.min() >= 0
+		# print("reward = ", reward)
+		# print("info['is_success'] = ", info["is_success"])
+
+		# assert reward.max() <= 1
+		# assert reward.min() >= 0
+
+		assert reward.max() <= 0
 
 		return new_obs, reward, done, info
 

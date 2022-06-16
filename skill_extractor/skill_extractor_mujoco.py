@@ -111,6 +111,8 @@ class skills_extractor_Mj():
 			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 30), shifted_state.copy()))
 			i = i + k
 
+			print("k = ", k)
+
 			## check that curr_state corresponds to observation
 			assert (curr_state == L_observations[i-1]).all()
 			# print("curr_state == ")

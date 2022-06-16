@@ -35,7 +35,7 @@ class SAC_variant(Agent, ABC):
 		"""
 
 		self._config_string = str(list(locals().items())[1:])
-		super().__init__("SAC", observation_dim, action_dim, params)
+		super().__init__("SAC_variant", observation_dim, action_dim, params)
 
 		if "seed" in self.params:
 			start_seed = self.params["seed"]
@@ -46,7 +46,7 @@ class SAC_variant(Agent, ABC):
 			"actor_lr": 0.001,
 			"backup_entropy": False,
 			"critic_lr": 0.001,
-			"discount": 0.9,
+			"discount": 0.99,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
 			"init_temperature": 0.0001,
