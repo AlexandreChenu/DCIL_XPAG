@@ -92,12 +92,12 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	values = []
 	obs = eval_env.reset()
 	#obs["observation"][0] = torch.tensor([ 0.33      ,  0.5       , -0.17363015])
-	skill = skill_sequence[1]
+	skill = skill_sequence[0]
 	# print("skill_0 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state
 
-	next_skill = skill_sequence[2]
+	next_skill = skill_sequence[1]
 	# print("skill_0 = ", skill)
 	_, _, next_goal = next_skill
 
@@ -139,7 +139,7 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	thetas = np.linspace(-torch.pi/2.,torch.pi/2.,100)
 	obs = eval_env.reset()
 
-	skill = skill_sequence[2]
+	skill = skill_sequence[1]
 	# print("skill_8 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state

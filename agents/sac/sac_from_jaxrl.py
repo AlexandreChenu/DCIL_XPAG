@@ -512,9 +512,9 @@ def update_critic(
 
     ## R \in {-1,0}
     max_value = jnp.zeros(next_q.shape)
-    clipped_next_q = jnp.minimum(next_q, max_value)
-    # min_value = jnp.zeros(next_q.shape)
-    # clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
+    max_clipped_next_q = jnp.minimum(next_q, max_value)
+    min_value = jnp.ones(next_q.shape) * (-1/(1-discount))
+    clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
 
     # target_q = batch.rewards + discount * batch.masks * next_q
     target_q = batch.rewards + discount * batch.masks * clipped_next_q
