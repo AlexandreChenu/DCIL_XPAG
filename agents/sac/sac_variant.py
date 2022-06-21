@@ -49,7 +49,7 @@ class SAC_variant(Agent, ABC):
 			"discount": 0.95,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
-			"init_temperature": 0.0001,
+			"init_temperature": 0.001,
 			"target_entropy": None,
 			"target_update_period": 1,
 			"tau": 0.005,

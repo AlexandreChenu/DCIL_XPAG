@@ -48,8 +48,8 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		new_obs = self.get_observation(env)
 		# info["next_skill_goal"] = new_obs["next_skill_goal"].copy()
 
-		assert new_obs["next_skill_goal"].all() == info["next_skill_goal"].all()
-		assert new_obs["next_next_skill_goal"].all() == info["next_next_skill_goal"].all()
+		assert (new_obs["next_skill_goal"] == info["next_skill_goal"]).all()
+		assert (new_obs["next_next_skill_goal"] == info["next_next_skill_goal"]).all()
 
 		self.last_info = info.copy()
 		self.last_done = done
