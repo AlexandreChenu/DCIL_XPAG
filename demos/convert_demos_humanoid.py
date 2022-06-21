@@ -25,12 +25,12 @@ def get_demo_humanoid( demo_path):
         print("demo.keys() = ", demo.keys())
     print("len(demo['obs']) = ", len(demo["obs"]))
 
-    for obs, sim_state in zip(demo["obs"][1:], demo["checkpoints"]): ## shift of one between obs & checkpoints
-        # print("obs = ", obs[:10])
-        # print("sim_state = ", sim_state[3][:10])
+    for obs, sim_state in zip(demo["obs"], demo["checkpoints"]): ## shift of one between obs & checkpoints
+        print("obs = ", obs[:10])
+        print("sim_state = ", sim_state)
         # print("obs == sim_state ", obs == sim_state[3])
 
-        print("obs.shape = ", obs.shape)
+        # print("obs.shape = ", obs.shape)
 
         L_observations.append(obs)
         L_sim_states.append(sim_state)

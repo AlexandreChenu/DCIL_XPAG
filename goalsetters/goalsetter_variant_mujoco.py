@@ -61,10 +61,10 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 		# print("reward = ", reward)
 		# print("info['is_success'] = ", info["is_success"])
 
-		# assert reward.max() <= 1
-		# assert reward.min() >= 0
+		assert reward.max() <= 1
+		assert reward.min() >= 0
 
-		assert reward.max() <= 0
+		# assert reward.max() <= 0
 
 		return new_obs, reward, done, info
 
@@ -77,12 +77,16 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 	def load(self, directory: str):
 		pass
 
-	def set_skills_sequence(self, sseq, env):
+	def set_skills_sequence(self, sseq, env, n_skills=None):
 		"""
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_sim_state), skill_length, skill_goal)
 		"""
-		self.skills_sequence = sseq
+		if n_skills is None:
+			self.skills_sequence = sseq
+		else:
+			self.skills_sequence = sseq[:n_skills]
+			
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 

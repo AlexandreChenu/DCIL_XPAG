@@ -332,13 +332,13 @@ if (__name__=='__main__'):
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
 
-	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env)
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=1.)
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	goalsetter = DCILGoalSetterMj_variant()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=10)
 	eval_goalsetter = DCILGoalSetterMj_variant()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=10)
 
 	# print(goalsetter.skills_observations)
 	# print(goalsetter.skills_full_states)
@@ -409,7 +409,7 @@ if (__name__=='__main__'):
 			# )
 			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
-			plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
+			plot_traj(eval_env, trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 

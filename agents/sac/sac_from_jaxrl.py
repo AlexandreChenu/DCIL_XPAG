@@ -505,14 +505,14 @@ def update_critic(
     next_q = jnp.minimum(next_q1, next_q2)
 
     ## R \in {0,1}
-    # max_value = jnp.ones(next_q.shape)*18.
-    # max_clipped_next_q = jnp.minimum(next_q, max_value)
-    # min_value = jnp.zeros(next_q.shape)
-    # clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
+    max_value = jnp.ones(next_q.shape)*12.
+    max_clipped_next_q = jnp.minimum(next_q, max_value)
+    min_value = jnp.zeros(next_q.shape)
+    clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
 
     ## R \in {-1,0}
-    max_value = jnp.zeros(next_q.shape)
-    clipped_next_q = jnp.minimum(next_q, max_value)
+    # max_value = jnp.zeros(next_q.shape)
+    # clipped_next_q = jnp.minimum(next_q, max_value)
     # min_value = jnp.zeros(next_q.shape)
     # clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
 

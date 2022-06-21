@@ -76,8 +76,8 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		# self.skills_sequence = [sseq[0], sseq[1], sseq[2]]
-		self.skills_sequence = sseq
+		self.skills_sequence = [sseq[0], sseq[1], sseq[2], sseq[3]]
+		# self.skills_sequence = sseq
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
