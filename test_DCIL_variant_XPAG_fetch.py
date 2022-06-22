@@ -2,8 +2,8 @@
 
 import os
 
-#os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-# os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
 import time
 import jax
@@ -56,9 +56,9 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 
 		u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
 
-		x = goal[0] + 0.05*np.cos(u)*np.sin(v)
-		y = goal[1] + 0.05*np.sin(u)*np.sin(v)
-		z = goal[2] + 0.05*np.cos(v)
+		x = goal[0] + 0.075*np.cos(u)*np.sin(v)
+		y = goal[1] + 0.075*np.sin(u)*np.sin(v)
+		z = goal[2] + 0.075*np.cos(v)
 		ax.plot_wireframe(x, y, z, color="blue", alpha = 0.1)
 
 	return
@@ -264,6 +264,7 @@ def eval_traj(env, eval_env, agent, goalsetter):
 	traj = []
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
+	nb_skills_success = 0
 
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
@@ -293,11 +294,14 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
 			if done.max():
+				if info["is_success"]==1:
+					nb_skills_success+=1
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
 				break
 		if not next_skill_avail:
 			eval_done = True
-	return traj
+	print("nb skills success = ", nb_skills_success)
+	return traj, nb_skills_success
 
 def visu_transitions(eval_env, transitions, it=0):
 	fig, ax = plt.subplots()
@@ -371,6 +375,7 @@ if (__name__=='__main__'):
 	## log file for success ratio
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
+	f_nb_skills_success = open(save_dir + "/nb_skills_success.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -416,8 +421,9 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
+			traj_eval, nb_skills_success = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
+			f_nb_skills_success.write(str(nb_skills_success) + "\n")
 			plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
@@ -529,3 +535,4 @@ if (__name__=='__main__'):
 
 	f_ratio.close()
 	f_critic_loss.close()
+	f_nb_skills_success.close()
