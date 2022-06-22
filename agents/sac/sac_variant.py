@@ -42,19 +42,19 @@ class SAC_variant(Agent, ABC):
 		else:
 			start_seed = 42
 
-		self.jaxrl_params = {
-			"actor_lr": 0.001,
-			"backup_entropy": False,
-			"critic_lr": 0.001,
-			"discount": 0.99,
-			# "hidden_dims": (512, 512, 512),
-			"hidden_dims": (400,300),
-			"init_temperature": 0.0001,
-			"target_entropy": None,
-			"target_update_period": 1,
-			"tau": 0.005,
-			"temp_lr": 0.0003,
-		}
+		# self.jaxrl_params = {
+		# 	"actor_lr": 0.001,
+		# 	"backup_entropy": False,
+		# 	"critic_lr": 0.001,
+		# 	"discount": 0.99,
+		# 	# "hidden_dims": (512, 512, 512),
+		# 	"hidden_dims": (400,300),
+		# 	"init_temperature": 0.0001,
+		# 	"target_entropy": None,
+		# 	"target_update_period": 1,
+		# 	"tau": 0.005,
+		# 	"temp_lr": 0.0003,
+		# }
 		self.jaxrl_parms = params
 
 		for key in self.jaxrl_params:
