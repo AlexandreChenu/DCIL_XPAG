@@ -46,7 +46,7 @@ class SAC_variant(Agent, ABC):
 			"actor_lr": 0.001,
 			"backup_entropy": False,
 			"critic_lr": 0.001,
-			"discount": 0.95,
+			"discount": 0.99,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
 			"init_temperature": 0.001,
@@ -55,6 +55,7 @@ class SAC_variant(Agent, ABC):
 			"tau": 0.005,
 			"temp_lr": 0.0003,
 		}
+		self.jaxrl_parms = params
 
 		for key in self.jaxrl_params:
 			if key in self.params:

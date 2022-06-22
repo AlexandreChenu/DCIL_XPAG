@@ -348,7 +348,7 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 200_000
+	max_steps = 400_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
@@ -366,11 +366,25 @@ if (__name__=='__main__'):
 	save_episode = True
 	plot_projection = None
 
+	params = {
+		"actor_lr": 0.001,
+		"backup_entropy": False,
+		"critic_lr": 0.001,
+		"discount": 0.99,
+		"hidden_dims": (512, 512, 512),
+		# "hidden_dims": (400,300),
+		"init_temperature": 0.001,
+		"target_entropy": None,
+		"target_update_period": 1,
+		"tau": 0.005,
+		"temp_lr": 0.0003,
+	}
+
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
 		else env_info['observation_dim'] + env_info['desired_goal_dim'] * 2,
 		env_info['action_dim'],
-		{}
+		params=params
 	)
 	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant(env.envs[0].compute_reward, env)
 	buffer_ = DefaultEpisodicBuffer(
@@ -490,8 +504,10 @@ if (__name__=='__main__'):
 		}
 
 		# print("step = ", step)
+		# print("info = ", info)
 
 		if env_info["is_goalenv"]:
+			step["done_from_env"] = info["done_from_env"]
 			step["is_success"] = info["is_success"]
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
 			step["next_skill_avail"] = info["next_skill_avail"].reshape(info["is_success"].shape)

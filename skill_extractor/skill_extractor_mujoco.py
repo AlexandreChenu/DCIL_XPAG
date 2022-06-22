@@ -16,7 +16,7 @@ import gym
 import gym_gfetch
 
 class skills_extractor_Mj():
-	def __init__(self, demo_path, env, eps_state=0.5, beta=2.):
+	def __init__(self, demo_path, env, eps_state=0.5, beta=1.25):
 
 		self.env = env
 		self.num_envs = env.num_envs
