@@ -63,17 +63,25 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 
 	return
 
-def plot_traj(eval_env, trajs, traj_eval, skill_sequence, save_dir, it=0):
+def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
 
-	for traj in trajs:
+	for traj in s_trajs:
 		# print("traj = ", traj)
 		for i in range(traj[0].shape[0]):
 			X = [eval_env.project_to_goal_space(state[i])[0] for state in traj]
 			Y = [eval_env.project_to_goal_space(state[i])[1] for state in traj]
 			Z = [eval_env.project_to_goal_space(state[i])[2] for state in traj]
-			ax.plot(X,Y,Z, c="lightsteelblue", alpha = 0.4)
+			ax.plot(X,Y,Z, c="m", alpha = 0.4)
+
+	for traj in f_trajs:
+		# print("traj = ", traj)
+		for i in range(traj[0].shape[0]):
+			X = [eval_env.project_to_goal_space(state[i])[0] for state in traj]
+			Y = [eval_env.project_to_goal_space(state[i])[1] for state in traj]
+			Z = [eval_env.project_to_goal_space(state[i])[2] for state in traj]
+			ax.plot(X,Y,Z, c="plum", alpha = 0.4)
 
 	X_eval = [eval_env.project_to_goal_space(state[0])[0] for state in traj_eval]
 	Y_eval = [eval_env.project_to_goal_space(state[0])[1] for state in traj_eval]
@@ -91,165 +99,46 @@ def plot_traj(eval_env, trajs, traj_eval, skill_sequence, save_dir, it=0):
 
 import torch
 @torch.no_grad()
-def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
-	thetas = np.linspace(-torch.pi/2.,torch.pi/2.,100)
 
-	values = []
-	obs = eval_env.reset()
-	#obs["observation"][0] = torch.tensor([ 0.33      ,  0.5       , -0.17363015])
-	skill = skill_sequence[0]
-	# print("skill_0 = ", skill)
-	starting_state, _, goal = skill
-	observation, full_state = starting_state
-	obs["observation"][0][:] = observation[0][:]
-	obs["desired_goal"][0][:] = goal[0][:2]
-	for theta in list(thetas):
-		obs["observation"][0][2] = theta
-		#print("obs = ", obs["observation"])
-		#print("dg = ", obs["desired_goal"])
-		#print("stack = ", hstack(obs["observation"], obs["desired_goal"]))
+def visu_value(env, eval_env, agent, skill_sequence):
 
-		if hasattr(env, "obs_rms"):
-			# print("normalization visu_value 1")
-			norm_obs = env.normalize(obs)
-			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
-				deterministic=True,
-			)
-			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
-		else:
-			action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
-				deterministic=True,
-			)
-			value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
-		values.append(value)
-
-	fig, ax = plt.subplots()
-	plt.plot(list(thetas), values,label="learned V(s,g')")
-	plt.plot()
-	plt.xlabel("theta")
-	plt.ylabel("value")
-	plt.legend()
-	plt.savefig(save_dir + "/value_skill_1_it_"+str(it)+".png")
-	plt.close(fig)
-
-	values = []
-	#thetas = np.linspace(0.,torch.pi,100)
-	thetas = np.linspace(torch.pi/2.,3*torch.pi/2.,100)
-	obs = eval_env.reset()
-
-	skill = skill_sequence[8]
-	# print("skill_8 = ", skill)
-	starting_state, _, goal = skill
-	observation, full_state = starting_state
-	obs["observation"][0][:] = observation[0][:]
-	obs["desired_goal"][0][:] = goal[0][:2]
-
-	for theta in list(thetas):
-		obs["observation"][0][2] = theta
-		if hasattr(env, "obs_rms"):
-			# print("normalization visu_value 2")
-			norm_obs = env.normalize(obs)
-			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
-				deterministic=True,
-			)
-			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
-		else:
-			action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
-				deterministic=True,
-			)
-			value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
-		values.append(value)
-
-	fig, ax = plt.subplots()
-	plt.plot(list(thetas), values,label="learned V(s,g')")
-	plt.plot()
-	plt.xlabel("theta")
-	plt.ylabel("value")
-	plt.legend()
-	plt.savefig(save_dir + "/value_skill_2_it_"+str(it)+".png")
-	plt.close(fig)
-
-	return values
-
-def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
-
-		skill_indices = [0,1,3]
-
-		for skill_indx in skill_indices:
+		values = []
+		for skill_indx in range(0,len(skill_sequence)-1):
 
 			obs = eval_env.reset()
 			skill = skill_sequence[skill_indx]
+			next_skill = skill_sequence[skill_indx+1]
 
-			starting_state, _, desired_goal = skill
-			observation, full_state = starting_state
+			starting_state, _, desired_goal_state = skill
+			desired_goal = eval_env.project_to_goal_space(desired_goal_state)
+			_, _, next_desired_goal_state = next_skill
+			next_desired_goal = eval_env.project_to_goal_space(next_desired_goal_state)
 
-			min_x = (desired_goal[0][0] - 2.)
-			max_x = (desired_goal[0][0] + 2.)
-			min_y = (desired_goal[0][1] - 2.)
-			max_y = (desired_goal[0][1] + 2.)
-			s_x = np.linspace(min_x, max_x, 50)
-			s_y = np.linspace(min_y, max_y, 50)
+			observation, sim_state = starting_state
 
-			states_x, states_y = np.meshgrid(s_x, s_y)
-			orientations = np.linspace(-np.pi/2, np.pi/2, 20)
+			eval_env.set_state([sim_state], np.ones((1,)))
 
-			values = []
-			for x, y in zip(states_x.flatten(), states_y.flatten()):
-				or_values = []
-				for theta in list(orientations):
-					obs["observation"][0][:] = np.array([x,y,theta])
-					obs["achieved_goal"][0][:] = np.array([x,y])
-					obs["desired_goal"][0][:] = desired_goal[0][:2]
+			obs = eval_env.get_observation()
 
-					if hasattr(env, "obs_rms"):
-						# print("normalization visu_value 1")
-						norm_obs = env.normalize(obs)
-						action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
-							deterministic=True,
-						)
-						value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
-					else:
-						action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
-							deterministic=True,
-						)
-						value = agent.value(hstack(obs["observation"], obs["desired_goal"]), action)
-					or_values.append(value[0])
+			if hasattr(env, "obs_rms"):
+				# print("normalization visu_value 1")
+				norm_obs = env.normalize(obs)
+				action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
+					deterministic=True,
+				)
+				value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
+			else:
+				# print(obs["observation"].shape)
+				# print(desired_goal.shape)
+				# print(next_desired_goal.shape)
+				action = agent.select_action(np.hstack((obs["observation"], desired_goal.reshape(1,3), next_desired_goal.reshape(1,3))),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], desired_goal.reshape(1,3), next_desired_goal.reshape(1,3))), action)
+			values.append(value[0])
 
-				values.append(max(or_values))
-
-			# print(states_x.flatten().shape)
-			# print(states_y.flatten().shape)
-			# print(len(values))
-
-			fig, ax = plt.subplots()
-			cb = plt.contourf(states_x, states_y, np.array(values).reshape(states_x.shape), levels=30)
-			fig.colorbar(cb)
-			eval_env.plot(ax)
-			ax.scatter(desired_goal[0][0],desired_goal[0][1])
-
-			circles = []
-			for i in range(0,len(skill_sequence)):
-				skl = skill_sequence[i]
-				st, _, dg = skl
-				obs, full_st = st
-				circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
-				circles.append(circle)
-
-				x = obs[0][0]
-				y = obs[0][1]
-				dx = np.cos(obs[0][2])
-				dy = np.sin(obs[0][2])
-				arrow = plt.arrow(x,y,dx*0.3,dy*0.3,alpha = 0.2,width = 0.04, color="m", zorder=6)
-				ax.add_patch(arrow)
-
-			coll = mc.PatchCollection(circles, color="plum", alpha = 0.5, zorder = 4)
-			ax.add_collection(coll)
-
-			plt.savefig(save_dir + "/visu_value_landscape_" + str(skill_indx) + "_it_" + str(it) + ".png")
-			plt.close(fig)
-
-		return
+		return values
 
 def eval_traj(env, eval_env, agent, goalsetter):
 	traj = []
@@ -290,33 +179,6 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			eval_done = True
 	return traj
 
-def visu_transitions(eval_env, transitions, it=0):
-	fig, ax = plt.subplots()
-	eval_env.plot(ax)
-	for i in range(transitions["observation.achieved_goal"].shape[0]):
-		obs_ag = transitions["observation.achieved_goal"][i,:2]
-		next_obs_ag = transitions["next_observation.achieved_goal"][i,:2]
-		X = [obs_ag[0], next_obs_ag[0]]
-		Y = [obs_ag[1], next_obs_ag[1]]
-		# if transitions["is_success"][i].max():
-		if transitions["reward"][i].max():
-			ax.plot(X,Y, c="green",marker = "o")
-		else:
-			ax.plot(X,Y,c="black",marker = "o")
-
-		obs_dg = transitions["observation.desired_goal"][i,:2]
-		next_obs_dg = transitions["next_observation.desired_goal"][i,:2]
-		X = [obs_dg[0], next_obs_dg[0]]
-		Y = [obs_dg[1], next_obs_dg[1]]
-		# if transitions["is_success"][i].max():
-		if transitions["reward"][i].max():
-			ax.plot(X,Y, c="grey")
-		else:
-			ax.plot(X,Y,c="brown")
-
-	plt.savefig(save_dir + "/transitions_"+str(it)+".png")
-	plt.close(fig)
-	return
 
 if (__name__=='__main__'):
 
@@ -336,9 +198,9 @@ if (__name__=='__main__'):
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	goalsetter = DCILGoalSetterMj_variant()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=10)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=3)
 	eval_goalsetter = DCILGoalSetterMj_variant()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=10)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=3)
 
 	# print(goalsetter.skills_observations)
 	# print(goalsetter.skills_full_states)
@@ -362,6 +224,7 @@ if (__name__=='__main__'):
 	## log file for success ratio
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
+	f_values = open(save_dir + "/value_start_states.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -370,7 +233,7 @@ if (__name__=='__main__'):
 		"actor_lr": 0.001,
 		"backup_entropy": False,
 		"critic_lr": 0.001,
-		"discount": 0.99,
+		"discount": 0.999,
 		"hidden_dims": (512, 512, 512),
 		# "hidden_dims": (400,300),
 		"init_temperature": 0.001,
@@ -397,7 +260,8 @@ if (__name__=='__main__'):
 	timing_reset()
 	observation = goalsetter.reset(env, env.reset())
 	print("observation = ", observation)
-	trajs = []
+	s_trajs = []
+	f_trajs = []
 	traj = []
 	info_train = None
 	num_success = 0
@@ -409,9 +273,10 @@ if (__name__=='__main__'):
 		# print("\n")
 
 		if not i % max(evaluate_every_x_steps // env_info["num_envs"], 1):
-			print("i : ", i)
+			print("------------------------------------------------------------------------------------------------------------")
+			print("| training steps nb ", i)
 			# t1_logs = time.time()
-			print("")
+			print("|")
 			# single_rollout_eval(
 			# 	i * env_info["num_envs"],
 			# 	eval_env,
@@ -423,9 +288,12 @@ if (__name__=='__main__'):
 			# )
 			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
-			plot_traj(eval_env, trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
-			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
-			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
+			print("values = ", values)
+			for value in values:
+				f_values.write(str(value) + " ")
+			f_values.write("\n")
 
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
@@ -433,16 +301,21 @@ if (__name__=='__main__'):
 			# if i > 2000:
 				# visu_transitions(eval_env, transitions, it = i)
 				# print("info_train = ", info_train)
-			trajs = []
+			s_trajs = []
+			f_trajs = []
 			traj = []
 			# if info_train is not None:
 			# 	print("rewards = ", max(info_train["rewards"]))
 
 			if num_rollouts > 0:
-				print("ratio = ", float(num_success/num_rollouts))
+				print("| success ratio (successful skill-rollouts / total rollouts) : ", float(num_success/num_rollouts))
+				print("| skills success : ", [np.array(result).mean() for result in goalsetter.L_skills_results])
+				print("| overshoot success : ")
 				f_ratio.write(str(float(num_success/num_rollouts)) + "\n")
 				num_success = 0
 				num_rollouts = 0
+
+			print("------------------------------------------------------------------------------------------------------------")
 
 		if not i % max(save_agent_every_x_steps // env_info["num_envs"], 1):
 			if save_dir is not None:
@@ -529,10 +402,14 @@ if (__name__=='__main__'):
 				buffer_.store_done()
 			observation = goalsetter.reset_done(env, env.reset_done())
 			if len(traj) > 0:
-				trajs.append(traj)
+				if info["is_success"].max() == 1:
+					s_trajs.append(traj)
+				else:
+					s_trajs.append(traj)
 				traj = []
 		t2_reset_time = time.time()
 		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()
 	f_critic_loss.close()
+	f_values.close()

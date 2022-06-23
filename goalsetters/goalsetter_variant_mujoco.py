@@ -86,7 +86,7 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 			self.skills_sequence = sseq
 		else:
 			self.skills_sequence = sseq[:n_skills]
-			
+
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
@@ -287,6 +287,8 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 		self.add_success_and_failures(is_done, is_success)
 		# print("skills_results after = ", self.L_skills_results)
 
+		# self.overshoot_indx = self.curr_indx.copy()
+
 		selected_skill_indices, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
 		self.curr_indx = np.where(is_done==1, selected_skill_indices, self.curr_indx)
 
@@ -304,6 +306,9 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 
 		## set skill
 		do_reset_state = np.logical_and(is_done, np.logical_not(overshoot_possible)).astype(np.intc)
+
+		# self.overshooting = np.logical_and(is_done, overshoot_possible).astype(np.intc)
+
 		env.set_state(reset_sim_states, do_reset_state)
 		do_reset_max_episode_steps = is_done.copy()
 		env.set_max_episode_steps(reset_max_episode_steps, do_reset_max_episode_steps)

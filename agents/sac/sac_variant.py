@@ -55,7 +55,7 @@ class SAC_variant(Agent, ABC):
 		# 	"tau": 0.005,
 		# 	"temp_lr": 0.0003,
 		# }
-		self.jaxrl_parms = params
+		self.jaxrl_params = params
 
 		for key in self.jaxrl_params:
 			if key in self.params:
