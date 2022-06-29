@@ -121,27 +121,42 @@ class HER_DCIL_variant(HER):
 			if self.do_normalize:
 				transitions["observation"] = np.concatenate(
 					[
-						self.env._normalize(transitions["observation.observation"], self.env.obs_rms["observation"]) ,
-						self.env._normalize(transitions["observation.desired_goal"], self.env.obs_rms["achieved_goal"]) ,
-						self.env._normalize(transitions["next_skill_goal"], self.env.obs_rms["achieved_goal"]),
+						self.env._normalize_shape(transitions["observation.observation"], self.env.obs_rms["observation"]),
+						self.env._normalize_shape(transitions["observation.desired_goal"], self.env.obs_rms["achieved_goal"]),
+						transitions["skill_indx"],
 					],
 					axis=1,
 				)
-				transitions["next_observation"] = np.concatenate(
+
+				s_transitions = transitions.copy()
+				s_transitions["next_observation"] = np.concatenate(
 					[
-						self.env._normalize(transitions["next_observation.observation"], self.env.obs_rms["observation"]),
-						self.env._normalize(transitions["observation.desired_goal"], self.env.obs_rms["achieved_goal"]),
-						self.env._normalize(transitions["next_skill_goal"], self.env.obs_rms["achieved_goal"]),
+						self.env._normalize_shape(transitions["next_observation.observation"], self.env.obs_rms["observation"]),
+						self.env._normalize_shape(transitions["next_skill_goal"], self.env.obs_rms["achieved_goal"]),
+						transitions["next_skill_indx"],
 					],
 					axis=1,
 				)
+
+				f_transitions = transitions.copy()
+				f_transitions["next_observation"] = np.concatenate(
+					[
+						self.env._normalize_shape(transitions["next_observation.observation"], self.env.obs_rms["observation"]),
+						self.env._normalize_shape(transitions["observation.desired_goal"], self.env.obs_rms["achieved_goal"]),
+						transitions["skill_indx"],
+					],
+					axis=1,
+				)
+
+				transitions["next_observation"] = np.where(transitions["reward"]==1., s_transitions["next_observation"], f_transitions["next_observation"])
+
 
 			else:
 				transitions["observation"] = np.concatenate(
 					[
 						transitions["observation.observation"],
 						transitions["observation.desired_goal"],
-						transitions["next_skill_goal"],
+						transitions["skill_indx"],
 					],
 					axis=1,
 				)
@@ -151,7 +166,7 @@ class HER_DCIL_variant(HER):
 					[
 						transitions["next_observation.observation"],
 						transitions["next_skill_goal"],
-						transitions["next_next_skill_goal"],
+						transitions["next_skill_indx"],
 					],
 					axis=1,
 				)
@@ -161,7 +176,7 @@ class HER_DCIL_variant(HER):
 					[
 						transitions["next_observation.observation"],
 						transitions["observation.desired_goal"],
-						transitions["next_skill_goal"],
+						transitions["skill_indx"],
 					],
 					axis=1,
 				)
@@ -169,7 +184,7 @@ class HER_DCIL_variant(HER):
 				transitions["next_observation"] = np.where(transitions["reward"]==1., s_transitions["next_observation"], f_transitions["next_observation"])
 
 		# transitions["true_done"] = np.zeros(transitions["reward"].shape) + np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"]))
-		transitions["true_done"] = np.logical_or(transitions["done_from_env"], np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"])))
+		transitions["true_done"] = np.logical_or(transitions["done_from_env"], np.logical_and(transitions["reward"],transitions["last_skill"]))
 
 		# print("true_done = ", transitions["true_done"][:10])
 		# print("reward = ", transitions["reward"][:10])

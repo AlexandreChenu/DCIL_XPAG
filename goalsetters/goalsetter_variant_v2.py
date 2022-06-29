@@ -14,6 +14,7 @@ from collections import OrderedDict
 from typing import Tuple, Union, Optional
 import copy
 
+
 class DCILGoalSetter_variant(GoalSetter, ABC):
 	def __init__(self, env, do_overshoot = True):
 		super().__init__("DCILGoalSetter_variant")
@@ -42,19 +43,15 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 	):
 
 		## get next skill goal for bonus reward computation
-		next_skill_indices, info['next_skill_avail'], next_next_skill_indices, info["next_next_skill_avail"]= self.next_skill_indx()
-		next_skill_indices = np.where(info['next_skill_avail'] == 1, next_skill_indices, self.curr_indx)
-		next_next_skill_indices = np.where(info['next_next_skill_avail'] == 1, next_next_skill_indices, next_skill_indices)
-
-		info["next_skill_goal"] = self.skills_goals[next_skill_indices.reshape(-1),0,:]
-		info["next_next_skill_goal"] = self.skills_goals[next_next_skill_indices.reshape(-1),0,:]
+		info["skill_indx"] = self.curr_indx.copy()
+		info["next_skill_indx"] = self.next_indx.copy()
 
 		new_obs = self.get_observation(env)
 
-		# info["next_skill_goal"] = new_obs["next_skill_goal"].copy()
+		info["next_skill_goal"] = self.skills_goals[info["next_skill_indx"].reshape(-1),0,:]
 
-		assert (new_obs["next_skill_goal"] == info["next_skill_goal"]).all()
-		assert (new_obs["next_next_skill_goal"] == info["next_next_skill_goal"]).all()
+		assert (new_obs["skill_indx"] == info["skill_indx"]).all()
+		assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
 
 		self.last_info = info.copy()
 		self.last_done = done
@@ -81,8 +78,8 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		self.skills_sequence = [sseq[0], sseq[1], sseq[2], sseq[3]]
-		# self.skills_sequence = sseq
+		# self.skills_sequence = [sseq[0], sseq[1], sseq[2], sseq[3]]
+		self.skills_sequence = sseq
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 
@@ -102,7 +99,6 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 			self.skills_full_states[i,:,:] = np.tile(np.array(full_state).flatten(), (env.num_envs, 1))
 			self.skills_max_episode_steps[i,:,:] = np.tile(np.array(skill_length).flatten(), (env.num_envs, 1))
 			self.skills_goals[i,:,:] = np.tile(env.project_to_goal_space(skill_goal_state).flatten(), (env.num_envs, 1))
-
 
 		return 0
 
@@ -233,6 +229,7 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 	def reset(self, env, observation, eval_mode=False):
 		## reset to first skill
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
+		self.next_indx = np.ones((env.num_envs,1)).astype(np.intc)
 
 		## recover skill
 		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
@@ -289,16 +286,20 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 		self.add_success_and_failures(is_done, is_success)
 		# print("skills_results after = ", self.L_skills_results)
 
-		# print("current indx = ", self.curr_indx)
-		selected_skill_indices, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
-		self.curr_indx = np.where(is_done==1, selected_skill_indices, self.curr_indx)
-		# print("next indx = ", self.curr_indx)
+		## sample new skill
+		new_curr_indx, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
 
 		r = np.random.rand(is_done.shape[0], is_done.shape[1])
 
-		start_indx = self.curr_indx.copy() ## skipping should not impact start state
-		skipping_indx = np.where(r>0.9, self.curr_indx+1, self.curr_indx) ## skipping for 10% of rollouts
-		self.curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, self.curr_indx)
+		## shift skill indx if skipping
+		start_indx = new_curr_indx.copy()
+		skipping_indx = np.where(r>0.9, new_curr_indx+1, new_curr_indx) ## skipping for 10% of rollouts
+		new_curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, new_curr_indx)
+
+		## change curr_indx if actually done
+		self.curr_indx = np.where(is_done==1, new_curr_indx, self.curr_indx)
+		next_indx = self.curr_indx + 1
+		self.next_indx = np.where(next_indx < self.nb_skills, next_indx, self.curr_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[start_indx.reshape(-1),0,:]
@@ -326,11 +327,14 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 	def get_observation(self, env):
 		obs = env.get_observation()
 
-		next_skill_indices, next_skill_avail, next_next_skill_indices, next_next_skill_avail = self.next_skill_indx()
-		next_skill_indices = np.where(next_skill_avail == 1, next_skill_indices, self.curr_indx)
-		next_next_skill_indices = np.where(next_next_skill_avail == 1, next_next_skill_indices, next_skill_indices)
-		obs["next_skill_goal"] = self.skills_goals[next_skill_indices.reshape(-1),0,:]
-		obs["next_next_skill_goal"] = self.skills_goals[next_next_skill_indices.reshape(-1),0,:]
+		obs["skill_indx"] = self.curr_indx.copy()
+		obs["next_skill_indx"] = self.next_indx.copy()
+
+		# next_skill_indices, next_skill_avail, next_next_skill_indices, next_next_skill_avail = self.next_skill_indx()
+		# next_skill_indices = np.where(next_skill_avail == 1, next_skill_indices, self.curr_indx)
+		# next_next_skill_indices = np.where(next_next_skill_avail == 1, next_next_skill_indices, next_skill_indices)
+		# obs["next_skill_goal"] = self.skills_goals[next_skill_indices.reshape(-1),0,:]
+		# obs["next_next_skill_goal"] = self.skills_goals[next_next_skill_indices.reshape(-1),0,:]
 
 
 		return obs

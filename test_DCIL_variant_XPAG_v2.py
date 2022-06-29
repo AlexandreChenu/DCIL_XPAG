@@ -103,25 +103,27 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 	obs["observation"][0][:] = observation[0][:]
 	obs["desired_goal"][0][:] = goal[0][:2]
-	obs["next_skill_goal"] = next_goal[0][:2].reshape(obs["desired_goal"].shape)
+	obs["skill_indx"] = np.array([[0]])
 	for theta in list(thetas):
 		obs["observation"][0][2] = theta
 		#print("obs = ", obs["observation"])
 		#print("dg = ", obs["desired_goal"])
 		#print("stack = ", hstack(obs["observation"], obs["desired_goal"]))
 
-		if hasattr(env, "fake_rms"):
-			# print("normalization visu_value 1")
-			norm_obs = env.normalize(obs)
-			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]),
+		if hasattr(env, "obs_rms"):
+			action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+												obs["skill_indx"])),
 				deterministic=True,
 			)
-			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]), action)
+			value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+									   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+									   obs["skill_indx"])), action)
 		else:
-			action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])),
+			action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 				deterministic=True,
 			)
-			value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])), action)
+			value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
 		values.append(value)
 
 	fig, ax = plt.subplots()
@@ -150,22 +152,25 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 	obs["observation"][0][:] = observation[0][:]
 	obs["desired_goal"][0][:] = goal[0][:2]
-	obs["next_skill_goal"] = next_goal[0][:2].reshape(obs["desired_goal"].shape)
+	obs["skill_indx"] = np.array([[1]])
 
 	for theta in list(thetas):
 		obs["observation"][0][2] = theta
-		if hasattr(env, "fake_rms"):
-			# print("normalization visu_value 2")
-			norm_obs = env.normalize(obs)
-			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]),
+		if hasattr(env, "obs_rms"):
+			# print("normalization visu_value 1")
+			action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+												obs["skill_indx"])),
 				deterministic=True,
 			)
-			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]), action)
+			value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+									   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+									   obs["skill_indx"])), action)
 		else:
-			action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])),
+			action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 				deterministic=True,
 			)
-			value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])), action)
+			value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
 		values.append(value)
 
 	fig, ax = plt.subplots()
@@ -212,20 +217,22 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 					obs["observation"][0][:] = np.array([x,y,theta])
 					obs["achieved_goal"][0][:] = np.array([x,y])
 					obs["desired_goal"][0][:] = desired_goal[0][:2]
-					obs["next_skill_goal"] = next_desired_goal[0][:2].reshape(obs["desired_goal"].shape)
+					obs["skill_indx"] = np.array([[skill_indx]])
 
-					if hasattr(env, "fake_rms"):
-						# print("normalization visu_value 1")
-						norm_obs = env.normalize(obs)
-						action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]),
+					if hasattr(env, "obs_rms"):
+						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+															obs["skill_indx"])),
 							deterministic=True,
 						)
-						value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"], norm_obs["next_skill_goal"]), action)
+						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+												   obs["skill_indx"])), action)
 					else:
-						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])),
+						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 							deterministic=True,
 						)
-						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["next_skill_goal"])), action)
+						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
 					or_values.append(value[0])
 
 				values.append(max(or_values))
@@ -276,13 +283,14 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			# print("observation = ", observation)
 			traj.append(observation["observation"])
-			if hasattr(env, "fake_rms"):
-				norm_observation = env.normalize(observation)
-				action = agent.select_action(hstack(norm_observation["observation"], norm_observation["desired_goal"], norm_observation["next_skill_goal"]),
-				deterministic=True,
+			if hasattr(env, "obs_rms"):
+				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
+													observation["skill_indx"])),
+					deterministic=True,
 				)
 			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["next_skill_goal"])),
+				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["skill_indx"])),
 				deterministic=True,
 				)
 			# print("action = ", action)
@@ -369,7 +377,8 @@ if (__name__=='__main__'):
 
 	batch_size = 256
 	gd_steps_per_step = 1.5
-	start_training_after_x_steps = env_info['max_episode_steps'] * 5
+	start_training_after_x_steps = 100 * 5
+	print("start_training_after_x_steps = ", start_training_after_x_steps)
 	max_steps = 150_000
 	evaluate_every_x_steps = 1000
 	save_agent_every_x_steps = 100_000
@@ -390,7 +399,7 @@ if (__name__=='__main__'):
 
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
-		else env_info['observation_dim'] + env_info['desired_goal_dim'] * 2,
+		else env_info['observation_dim'] + env_info['desired_goal_dim'] + 1,
 		env_info['action_dim'],
 		params = {
 			"actor_lr": 0.001,
@@ -471,20 +480,23 @@ if (__name__=='__main__'):
 		if i * env_info["num_envs"] < start_training_after_x_steps:
 			action = env_info["action_space"].sample()
 		else:
+			env.do_update = False
 			# t1_a_select = time.time()
-			if hasattr(eval_env, "fake_rms"):
-				norm_observation = env.normalize(observation)
+			if hasattr(eval_env, "obs_rms"):
 				action = agent.select_action(
-					norm_observation
+					observation
 					if not env_info["is_goalenv"]
-					else hstack(norm_observation["observation"], norm_observation["desired_goal"], norm_observation["next_skill_goal"]),
+					else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+									env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
+									observation["skill_indx"])),
 					deterministic=False,
 				)
+
 			else:
 				action = agent.select_action(
 					observation
 					if not env_info["is_goalenv"]
-					else np.hstack((observation["observation"], observation["desired_goal"], observation["next_skill_goal"])),
+					else np.hstack((observation["observation"], observation["desired_goal"], observation["skill_indx"])),
 					deterministic=False,
 				)
 			# t2_a_select = time.time()
@@ -523,10 +535,10 @@ if (__name__=='__main__'):
 		if env_info["is_goalenv"]:
 			step["done_from_env"] = info["done_from_env"]
 			step["is_success"] = info["is_success"]
+			step["last_skill"] = (info["skill_indx"] == info["next_skill_indx"]).reshape(observation["desired_goal"].shape[0], 1)
+			step["skill_indx"] = info["skill_indx"].reshape(observation["desired_goal"].shape[0], 1)
+			step["next_skill_indx"] = info["next_skill_indx"].reshape(observation["desired_goal"].shape[0], 1)
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
-			step["next_skill_avail"] = info["next_skill_avail"].reshape(info["is_success"].shape)
-			step["next_next_skill_goal"] = info["next_next_skill_goal"].reshape(observation["desired_goal"].shape)
-			step["next_next_skill_avail"] = info["next_next_skill_avail"].reshape(info["is_success"].shape)
 
 		buffer_.insert(step)
 
