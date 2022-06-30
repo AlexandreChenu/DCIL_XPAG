@@ -168,8 +168,8 @@ class HER_DCIL_variant(HER):
 
 				transitions["next_observation"] = np.where(transitions["reward"]==1., s_transitions["next_observation"], f_transitions["next_observation"])
 
-		# transitions["true_done"] = np.zeros(transitions["reward"].shape) + np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"]))
-		transitions["true_done"] = np.logical_or(transitions["done_from_env"], np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"])))
+		transitions["true_done"] = np.zeros(transitions["reward"].shape) + np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"]))
+		# transitions["true_done"] = np.logical_or(transitions["done_from_env"], np.logical_and(transitions["reward"],np.logical_not(transitions["next_skill_avail"])))
 
 		# print("true_done = ", transitions["true_done"][:10])
 		# print("reward = ", transitions["reward"][:10])

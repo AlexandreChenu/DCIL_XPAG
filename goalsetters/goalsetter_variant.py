@@ -15,7 +15,7 @@ from typing import Tuple, Union, Optional
 import copy
 
 class DCILGoalSetter_variant(GoalSetter, ABC):
-	def __init__(self, env, do_overshoot = True):
+	def __init__(self, do_overshoot = True):
 		super().__init__("DCILGoalSetter_variant")
 
 		self.skills_sequence = []

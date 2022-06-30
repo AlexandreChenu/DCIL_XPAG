@@ -120,13 +120,14 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 		#print("stack = ", hstack(obs["observation"], obs["desired_goal"]))
 
 		if hasattr(env, "obs_rms"):
-			# print("normalization visu_value 1")
+			# print("normalization")
 			norm_obs = env.normalize(obs)
 			action = agent.select_action(hstack(norm_obs["observation"], norm_obs["desired_goal"]),
 				deterministic=True,
 			)
 			value = agent.value(hstack(norm_obs["observation"], norm_obs["desired_goal"]), action)
 		else:
+			# print("no normalization")
 			action = agent.select_action(hstack(obs["observation"], obs["desired_goal"]),
 				deterministic=True,
 			)
@@ -361,7 +362,7 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 300_000
+	max_steps = 500_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 

@@ -289,14 +289,17 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 
 		# self.overshoot_indx = self.curr_indx.copy()
 
-		selected_skill_indices, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
-		self.curr_indx = np.where(is_done==1, selected_skill_indices, self.curr_indx)
+		new_curr_indx, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
 
 		r = np.random.rand(is_done.shape[0], is_done.shape[1])
 
-		start_indx = self.curr_indx.copy() ## skipping should not impact start state
-		skipping_indx = np.where(r>0.9, self.curr_indx+1, self.curr_indx) ## skipping for 10% of rollouts
-		self.curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, self.curr_indx)
+		## shift skill indx if skipping
+		start_indx = new_curr_indx.copy()
+		skipping_indx = np.where(r>0.9, new_curr_indx+1, new_curr_indx) ## skipping for 10% of rollouts
+		new_curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, new_curr_indx)
+
+		## change curr_indx if actually done
+		self.curr_indx = np.where(is_done==1, new_curr_indx, self.curr_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[start_indx.reshape(-1),0,:]
