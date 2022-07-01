@@ -209,7 +209,7 @@ if (__name__=='__main__'):
 
 	## create log dir
 	now = datetime.now()
-	dt_string = '%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
+	dt_string = 'DCIL_fetch_v3_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
 	# save_dir = os.path.join('/gpfswork/rech/kcr/ubj56je', 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
@@ -226,7 +226,7 @@ if (__name__=='__main__'):
 		"actor_lr": 0.001,
 		"backup_entropy": False,
 		"critic_lr": 0.001,
-		"discount": 0.95,
+		"discount": 0.98,
 		# "hidden_dims": (512, 512, 512),
 		"hidden_dims": (400,300),
 		"init_temperature": 0.0001,
