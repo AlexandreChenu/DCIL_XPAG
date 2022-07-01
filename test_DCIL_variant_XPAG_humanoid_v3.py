@@ -33,7 +33,7 @@ from matplotlib import collections as mc
 import numpy as np
 import copy
 
-import gym_gfetch
+import gym_ghumanoid
 
 ## DCIL versions
 from wrappers.gym_vec_env_mujoco import gym_vec_env
@@ -41,6 +41,7 @@ from skill_extractor import skills_extractor_Mj
 from samplers import HER_DCIL_variant_v2
 from goalsetters import DCILGoalSetterMj_variant_v3
 from agents import SAC_variant
+
 
 import pdb
 
@@ -56,38 +57,37 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 
 		u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
 
-		x = goal[0] + 0.075*np.cos(u)*np.sin(v)
-		y = goal[1] + 0.075*np.sin(u)*np.sin(v)
-		z = goal[2] + 0.075*np.cos(v)
+		x = goal[0] + 0.05*np.cos(u)*np.sin(v)
+		y = goal[1] + 0.05*np.sin(u)*np.sin(v)
+		z = goal[2] + 0.05*np.cos(v)
 		ax.plot_wireframe(x, y, z, color="blue", alpha = 0.1)
 
 	return
 
-def plot_traj(eval_env, trajs, traj_eval, skill_sequence, save_dir, it=0):
+def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
 
-	for traj in trajs:
+	for traj in s_trajs:
 		# print("traj = ", traj)
 		for i in range(traj[0].shape[0]):
 			X = [eval_env.project_to_goal_space(state[i])[0] for state in traj]
 			Y = [eval_env.project_to_goal_space(state[i])[1] for state in traj]
 			Z = [eval_env.project_to_goal_space(state[i])[2] for state in traj]
-			ax.plot(X,Y,Z, c="lightsteelblue", alpha = 0.4)
-			X_obj = [eval_env.project_to_goal_space(state[i])[3] for state in traj]
-			Y_obj = [eval_env.project_to_goal_space(state[i])[4] for state in traj]
-			Z_obj = [eval_env.project_to_goal_space(state[i])[5] for state in traj]
-			ax.plot(X_obj,Y_obj,Z_obj, c="darkseagreen", alpha = 0.8)
+			ax.plot(X,Y,Z, c="m", alpha = 0.4)
+
+	for traj in f_trajs:
+		# print("traj = ", traj)
+		for i in range(traj[0].shape[0]):
+			X = [eval_env.project_to_goal_space(state[i])[0] for state in traj]
+			Y = [eval_env.project_to_goal_space(state[i])[1] for state in traj]
+			Z = [eval_env.project_to_goal_space(state[i])[2] for state in traj]
+			ax.plot(X,Y,Z, c="plum", alpha = 0.4)
 
 	X_eval = [eval_env.project_to_goal_space(state[0])[0] for state in traj_eval]
 	Y_eval = [eval_env.project_to_goal_space(state[0])[1] for state in traj_eval]
 	Z_eval = [eval_env.project_to_goal_space(state[0])[2] for state in traj_eval]
 	ax.plot(X_eval, Y_eval, Z_eval, c = "blue")
-
-	X_eval_obj = [eval_env.project_to_goal_space(state[0])[3] for state in traj_eval]
-	Y_eval_obj = [eval_env.project_to_goal_space(state[0])[4] for state in traj_eval]
-	Z_eval_obj = [eval_env.project_to_goal_space(state[0])[5] for state in traj_eval]
-	ax.plot(X_eval_obj, Y_eval_obj, Z_eval_obj, c = "red")
 
 	visu_success_zones(eval_env, skill_sequence, ax)
 
@@ -99,13 +99,57 @@ def plot_traj(eval_env, trajs, traj_eval, skill_sequence, save_dir, it=0):
 	return
 
 import torch
+@torch.no_grad()
 
+
+def visu_value(env, eval_env, agent, skill_sequence):
+
+		values = []
+		for skill_indx in range(0,len(skill_sequence)-1):
+
+			obs = eval_env.reset()
+			skill = skill_sequence[skill_indx]
+			next_skill = skill_sequence[skill_indx+1]
+
+			starting_state, _, desired_goal_state = skill
+			desired_goal = eval_env.project_to_goal_space(desired_goal_state)
+			_, _, next_desired_goal_state = next_skill
+			next_desired_goal = eval_env.project_to_goal_space(next_desired_goal_state)
+
+			observation, sim_state = starting_state
+
+			## convert skill indx to a vectorized binary
+			bin_skill_indx = np.array(list(map(float,'{0:06b}'.format(int(skill_indx))[2:])))
+
+			eval_env.set_state([sim_state], np.ones((1,)))
+
+			obs = eval_env.get_observation()
+
+			if hasattr(env, "obs_rms"):
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(desired_goal.reshape(1,3),env.obs_rms["achieved_goal"]),
+													bin_skill_indx.reshape(1,4))),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(desired_goal.reshape(1,3),env.obs_rms["achieved_goal"]),
+										   bin_skill_indx.reshape(1,4))), action)
+			else:
+				# print(obs["observation"].shape)
+				# print(desired_goal.shape)
+				# print(next_desired_goal.shape)
+				action = agent.select_action(np.hstack((obs["observation"], desired_goal.reshape(1,3), bin_skill_indx.reshape(1,4))),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], desired_goal.reshape(1,3), bin_skill_indx.reshape(1,4))), action)
+			values.append(value[0])
+
+		return values
 
 def eval_traj(env, eval_env, agent, goalsetter):
 	traj = []
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
-	nb_skills_success = 0
 
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
@@ -136,42 +180,12 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
 			if done.max():
-				if info["is_success"]==1:
-					nb_skills_success+=1
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
 				break
 		if not next_skill_avail:
 			eval_done = True
-	print("nb skills success = ", nb_skills_success)
-	return traj, nb_skills_success
+	return traj
 
-def visu_transitions(eval_env, transitions, it=0):
-	fig, ax = plt.subplots()
-	eval_env.plot(ax)
-	for i in range(transitions["observation.achieved_goal"].shape[0]):
-		obs_ag = transitions["observation.achieved_goal"][i,:2]
-		next_obs_ag = transitions["next_observation.achieved_goal"][i,:2]
-		X = [obs_ag[0], next_obs_ag[0]]
-		Y = [obs_ag[1], next_obs_ag[1]]
-		# if transitions["is_success"][i].max():
-		if transitions["reward"][i].max():
-			ax.plot(X,Y, c="green",marker = "o")
-		else:
-			ax.plot(X,Y,c="black",marker = "o")
-
-		obs_dg = transitions["observation.desired_goal"][i,:2]
-		next_obs_dg = transitions["next_observation.desired_goal"][i,:2]
-		X = [obs_dg[0], next_obs_dg[0]]
-		Y = [obs_dg[1], next_obs_dg[1]]
-		# if transitions["is_success"][i].max():
-		if transitions["reward"][i].max():
-			ax.plot(X,Y, c="grey")
-		else:
-			ax.plot(X,Y,c="brown")
-
-	plt.savefig(save_dir + "/transitions_"+str(it)+".png")
-	plt.close(fig)
-	return
 
 if (__name__=='__main__'):
 
@@ -184,16 +198,16 @@ if (__name__=='__main__'):
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
 	num_envs = 1  # the number of rollouts in parallel during training
-	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs)
+	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
 
-	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5, beta=2.)
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5)
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	goalsetter = DCILGoalSetterMj_variant_v3()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)#, n_skills=2)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=3)
 	eval_goalsetter = DCILGoalSetterMj_variant_v3()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)#, n_skills=2)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=3)
 
 	# print(goalsetter.skills_observations)
 	# print(goalsetter.skills_full_states)
@@ -203,13 +217,13 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 500_000
+	max_steps = 400_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
 	## create log dir
 	now = datetime.now()
-	dt_string = 'DCIL_fetch_v3_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
+	dt_string = '%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
 	# save_dir = os.path.join('/gpfswork/rech/kcr/ubj56je', 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
@@ -217,7 +231,7 @@ if (__name__=='__main__'):
 	## log file for success ratio
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
-	f_nb_skills_success = open(save_dir + "/nb_skills_success.txt", "w")
+	f_values = open(save_dir + "/value_start_states.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -227,9 +241,9 @@ if (__name__=='__main__'):
 		"backup_entropy": False,
 		"critic_lr": 0.001,
 		"discount": 0.98,
-		# "hidden_dims": (512, 512, 512),
-		"hidden_dims": (400,300),
-		"init_temperature": 0.0001,
+		"hidden_dims": (512, 512, 512),
+		# "hidden_dims": (400,300),
+		"init_temperature": 0.001,
 		"target_entropy": None,
 		"target_update_period": 1,
 		"tau": 0.005,
@@ -241,9 +255,9 @@ if (__name__=='__main__'):
 
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
-		else env_info['observation_dim'] + env_info['desired_goal_dim'] + len(bin(len(s_extractor.skills_sequence))[2:]),
+		else env_info['observation_dim'] + env_info['desired_goal_dim'] + len(bin(12)[2:]),
 		env_info['action_dim'],
-		params = params
+		params=params
 	)
 	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant_v2(env.envs[0].compute_reward, env)
 	buffer_ = DefaultEpisodicBuffer(
@@ -256,12 +270,12 @@ if (__name__=='__main__'):
 	timing_reset()
 	observation = goalsetter.reset(env, env.reset())
 	print("observation = ", observation)
-	trajs = []
+	s_trajs = []
+	f_trajs = []
 	traj = []
 	info_train = None
 	num_success = 0
 	num_rollouts = 0
-
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
@@ -271,12 +285,14 @@ if (__name__=='__main__'):
 		# print("\n")
 
 		if not i % max(evaluate_every_x_steps // env_info["num_envs"], 1):
-			print("i : ", i)
+			print("------------------------------------------------------------------------------------------------------------")
+			print("| training steps nb ", i)
 			# t1_logs = time.time()
-			print("")
+			print("|")
+
 			if hasattr(env, "obs_rms"):
-				print("do update ? ", env.do_update)
-				print("RMS = ", env.obs_rms["observation"].mean[0][:10])
+				print("| do update ? ", env.do_update)
+				print("| RMS = ", env.obs_rms["observation"].mean[0][:10])
 			# single_rollout_eval(
 			# 	i * env_info["num_envs"],
 			# 	eval_env,
@@ -286,28 +302,33 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, nb_skills_success = eval_traj(env, eval_env, agent, eval_goalsetter)
+			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
-			f_nb_skills_success.write(str(nb_skills_success) + "\n")
-			plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
-			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
-			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
+			print("values = ", values)
+			for value in values:
+				f_values.write(str(value) + " ")
+			f_values.write("\n")
 
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
 
-			if i > 2000:
+			# if i > 2000:
 				# visu_transitions(eval_env, transitions, it = i)
-				print("info_train = ", info_train)
-			trajs = []
+				# print("info_train = ", info_train)
+			s_trajs = []
+			f_trajs = []
 			traj = []
 			# if info_train is not None:
 			# 	print("rewards = ", max(info_train["rewards"]))
 
 			if num_rollouts > 0:
-				print("ratio = ", float(num_success/num_rollouts))
-				# print("num_success_skill = ", num_success_skill)
-				# print("num_rollouts_skill = ", num_rollouts_skill)
+				print("| success ratio (successful skill-rollouts / total rollouts) : ", float(num_success/num_rollouts))
+				print("| skills success : ", [np.array(result).mean() for result in goalsetter.L_skills_results])
+				print("| overshoot success : ")
+				# print("| num_success_skill = ", np.array(num_success_skill))
+				# print("| num_rollouts_skill = ", np.array(num_rollouts_skill))
 				np.savetxt(save_dir + "/success_skill_" + str(i) + ".txt", num_success_skill)
 				np.savetxt(save_dir + "/rollout_skill_" + str(i) + ".txt", num_rollouts_skill)
 				f_ratio.write(str(float(num_success/num_rollouts)) + "\n")
@@ -315,6 +336,8 @@ if (__name__=='__main__'):
 				num_rollouts = 0
 				num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 				num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
+
+			print("------------------------------------------------------------------------------------------------------------")
 
 		if not i % max(save_agent_every_x_steps // env_info["num_envs"], 1):
 			if save_dir is not None:
@@ -325,7 +348,7 @@ if (__name__=='__main__'):
 		else:
 			env.do_update = False
 			t1_a_select = time.time()
-			if hasattr(eval_env, "obs_rms"):
+			if hasattr(env, "obs_rms"):
 				action = agent.select_action(
 					observation
 					if not env_info["is_goalenv"]
@@ -376,13 +399,14 @@ if (__name__=='__main__'):
 		}
 
 		# print("step = ", step)
+		# print("info = ", info)
 
 		if env_info["is_goalenv"]:
 			step["done_from_env"] = info["done_from_env"]
 			step["is_success"] = info["is_success"]
 			step["last_skill"] = (info["skill_indx"] == info["next_skill_indx"]).reshape(observation["desired_goal"].shape[0], 1)
-			step["skill_indx"] = observation["bin_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:]))
-			step["next_skill_indx"] = observation["bin_next_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:]))
+			step["skill_indx"] = observation["bin_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(12)[2:]))
+			step["next_skill_indx"] = observation["bin_next_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(12)[2:]))
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
 
 		buffer_.insert(step)
@@ -408,10 +432,14 @@ if (__name__=='__main__'):
 				buffer_.store_done()
 			observation = goalsetter.reset_done(env, env.reset_done())
 			if len(traj) > 0:
-				trajs.append(traj)
+				if info["is_success"].max() == 1:
+					s_trajs.append(traj)
+				else:
+					s_trajs.append(traj)
 				traj = []
 		t2_reset_time = time.time()
+		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()
 	f_critic_loss.close()
-	f_nb_skills_success.close()
+	f_values.close()

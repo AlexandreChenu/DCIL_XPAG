@@ -118,12 +118,12 @@ class skills_extractor_Mj():
 			# print("test eq = ", curr_state[:100] == L_observations[i-1][:100])
 
 			## check that curr_state corresponds to observation
-			assert (curr_state == L_observations[i-1]).all()
+			# assert (curr_state == L_observations[i-1]).all()
 			# print("curr_state == ")
 			# print("\ncurr_state[:10] = ", curr_state[:10])
 			# print("L_observations[i][:10] = ", L_observations[i][:10])
 			# print("L_sim_states[i][3][:10] = ", L_sim_states[i][3][:10])
-			assert (L_observations[i] == L_sim_states[i][3]).all()
+			# assert (L_observations[i] == L_sim_states[i][3]).all()
 
 			curr_starting_state = (curr_state, L_sim_states[i-1])
 

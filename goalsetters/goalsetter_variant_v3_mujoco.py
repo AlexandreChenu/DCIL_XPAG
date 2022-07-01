@@ -20,6 +20,7 @@ class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 		self.nb_skills = 0
 
 		self.curr_indx = None
+		self.reset_indx = None
 
 		self.do_overshoot = do_overshoot
 
@@ -42,6 +43,7 @@ class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 		## get next skill goal for bonus reward computation
 		info["skill_indx"] = self.curr_indx.copy()
 		info["next_skill_indx"] = self.next_indx.copy()
+		info["reset_skill_indx"] = self.reset_indx.copy()
 
 		new_obs = self.get_observation(env)
 
@@ -230,6 +232,8 @@ class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 		self.next_indx = np.ones((env.num_envs,1)).astype(np.intc)
 
+		self.reset_indx = self.curr_indx.copy()
+
 		## recover skill
 		reset_observations = self.skills_observations[self.curr_indx.reshape(-1),0,:]
 		reset_sim_states = [item for item in itemgetter(*self.curr_indx.reshape(-1))(self.skills_sim_states)]
@@ -295,6 +299,9 @@ class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 		self.curr_indx = select_skill_indx
 		next_skill_indx = self.curr_indx + 1
 		self.next_indx = np.where(next_skill_indx < self.nb_skills, next_skill_indx, self.curr_indx)
+
+		## update reset indx to curr indx if no overshoot
+		self.reset_indx = np.where(np.logical_and(is_done, np.logical_not(overshoot_possible)).astype(np.intc)==1, self.curr_indx, self.reset_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[start_skill_indx.reshape(-1),0,:]
