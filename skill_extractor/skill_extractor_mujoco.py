@@ -108,7 +108,7 @@ class skills_extractor_Mj():
 				k += 1
 
 			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
-			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 70), shifted_state.copy()))
+			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 100), shifted_state.copy()))
 			i = i + k
 
 			print("k = ", k)
