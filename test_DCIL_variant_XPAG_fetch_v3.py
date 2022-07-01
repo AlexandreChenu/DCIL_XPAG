@@ -203,7 +203,7 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 300_000
+	max_steps = 500_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
@@ -235,6 +235,9 @@ if (__name__=='__main__'):
 		"tau": 0.005,
 		"temp_lr": 0.0003,
 	}
+
+	with open(save_dir + "/sac_params.txt", "w") as f:
+		print(params, file=f)
 
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
@@ -369,8 +372,8 @@ if (__name__=='__main__'):
 			step["done_from_env"] = info["done_from_env"]
 			step["is_success"] = info["is_success"]
 			step["last_skill"] = (info["skill_indx"] == info["next_skill_indx"]).reshape(observation["desired_goal"].shape[0], 1)
-			step["skill_indx"] = observation["bin_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:])
-			step["next_skill_indx"] = observation["bin_next_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:])
+			step["skill_indx"] = observation["bin_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:]))
+			step["next_skill_indx"] = observation["bin_next_skill_indx"].reshape(observation["desired_goal"].shape[0], len(bin(len(s_extractor.skills_sequence))[2:]))
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
 
 		buffer_.insert(step)
