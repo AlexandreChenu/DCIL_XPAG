@@ -106,18 +106,7 @@ def gym_vec_env_(env_name, num_envs):
 		#         )
 		#     )
 		# )
-		# env = NormalizationWrapper(DCILVecWrapper(
-		# 		SyncVectorEnv(
-		# 			[
-		# 				(lambda: gym.make(env_name))
-		# 				if hasattr(dummy_env, "reset_done")
-		# 				else (lambda: ResetDoneWrapper(gym.make(env_name)))
-		# 			]
-		# 			* num_envs,
-		# 		)
-		# 	))
-
-		env = DCILVecWrapper(
+		env = NormalizationWrapper(DCILVecWrapper(
 				SyncVectorEnv(
 					[
 						(lambda: gym.make(env_name))
@@ -126,7 +115,18 @@ def gym_vec_env_(env_name, num_envs):
 					]
 					* num_envs,
 				)
-			)
+			))
+
+		# env = DCILVecWrapper(
+		# 		SyncVectorEnv(
+		# 			[
+		# 				(lambda: gym.make(env_name))
+		# 				if hasattr(dummy_env, "reset_done")
+		# 				else (lambda: ResetDoneWrapper(gym.make(env_name)))
+		# 			]
+		# 			* num_envs,
+		# 		)
+		# 	)
 
 		env.device = "cpu"
 		env._spec = dummy_env.spec

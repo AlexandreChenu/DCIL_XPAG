@@ -19,7 +19,7 @@ class HER_DCIL_variant_v2(HER):
 		super().__init__(compute_reward, replay_strategy, datatype)
 
 		self.env = env
-		if hasattr(self.env, "fake_rms"):
+		if hasattr(self.env, "obs_rms"):
 			self.do_normalize = True
 		else:
 			self.do_normalize = False

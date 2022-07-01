@@ -12,7 +12,7 @@ import numpy as np
 
 from operator import itemgetter
 
-class DCILGoalSetterMj_variant_v2(GoalSetter, ABC):
+class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 	def __init__(self, do_overshoot = True):
 		super().__init__("DCILGoalSetter")
 
@@ -47,8 +47,8 @@ class DCILGoalSetterMj_variant_v2(GoalSetter, ABC):
 
 		info["next_skill_goal"] = self.skills_goals[info["next_skill_indx"].reshape(-1),0,:]
 
-		assert (new_obs["skill_indx"] == info["skill_indx"]).all()
-		assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
+		# assert (new_obs["skill_indx"] == info["skill_indx"]).all()
+		# assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
 
 		self.last_info = info.copy()
 		self.last_done = done
@@ -288,13 +288,13 @@ class DCILGoalSetterMj_variant_v2(GoalSetter, ABC):
 
 		r = np.random.rand(is_success.shape[0], is_success.shape[1])
 		start_skill_indx = select_skill_indx.copy()
-		skipping_indx = np.where(r>0.9, select_skill_indices+1, select_skill_indices) ## skipping for 10% of rollouts
-		select_skill_indices = np.where(skipping_indx < self.nb_skills, skipping_indx, select_skill_indices)
+		skipping_indx = np.where(r>0.9, select_skill_indx+1, select_skill_indx) ## skipping for 10% of rollouts
+		select_skill_indices = np.where(skipping_indx < self.nb_skills, skipping_indx, select_skill_indx)
 
 		# ## if overshoot possible (done & success & curr_indx + 1 < nb_skills) -> change for next indx if possible
 		self.curr_indx = select_skill_indx
-		next_goal_skill_indx = self.curr_indx + 1
-		self.next_indx = np.where(next_goal_skill_indx < self.nb_skills, next_goal_skill_indx, self.curr_indx)
+		next_skill_indx = self.curr_indx + 1
+		self.next_indx = np.where(next_skill_indx < self.nb_skills, next_skill_indx, self.curr_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[start_skill_indx.reshape(-1),0,:]
@@ -315,8 +315,11 @@ class DCILGoalSetterMj_variant_v2(GoalSetter, ABC):
 	def get_observation(self, env):
 		obs = env.get_observation()
 
-		obs["skill_indx"] = self.curr_indx.copy()
-		obs["next_skill_indx"] = self.next_indx.copy()
+		bin_curr_indx = np.array([list(map(float,'{0:06b}'.format(int(self.curr_indx[i][0]))[2:])) for i in range(self.curr_indx.shape[0])])
+		obs["bin_skill_indx"] = bin_curr_indx
+
+		bin_next_indx = np.array([list(map(float,'{0:06b}'.format(int(self.next_indx[i][0]))[2:])) for i in range(self.next_indx.shape[0])])
+		obs["bin_next_skill_indx"] = bin_next_indx
 
 		return obs
 
