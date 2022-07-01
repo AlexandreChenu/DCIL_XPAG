@@ -12,7 +12,7 @@ import numpy as np
 
 from operator import itemgetter
 
-class DCILGoalSetterMj_variant(GoalSetter, ABC):
+class DCILGoalSetterMj_variant_v2(GoalSetter, ABC):
 	def __init__(self, do_overshoot = True):
 		super().__init__("DCILGoalSetter")
 
@@ -181,10 +181,12 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 
 	def shift_skill(self, env):
 		is_done = self.last_done
-		next_skill_indices, next_skill_avail,_,_ = self.next_skill_indx()
+		next_skill_indices, next_skill_avail, next_next_indx, next_next_skill_avail = self.next_skill_indx()
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx
 		self.curr_indx = np.where(next_skill_avail == 1, next_skill_indices, self.curr_indx)
+		next_indx = self.curr_indx + 1
+		self.next_indx = np.where(next_indx < self.nb_skills, next_indx, self.curr_indx)
 
 		## recover skill
 		reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
@@ -216,12 +218,17 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 		sampled_skill_indices = self.sample_skill_indx(n_envs) ## return tensor of new indices
 		next_skill_indices, next_skill_avail, _, _ = self.next_skill_indx() ## return tensor of next skills indices
 
+		r = np.random.rand(is_success.shape[0], is_success.shape[1])
+		start_skill_indices = sampled_skill_indices.copy()
+		skipping_indx = np.where(r>0.9, start_skill_indices+1, start_skill_indices) ## skipping for 10% of rollouts
+		sampled_skill_indices = np.where(skipping_indx < self.nb_skills, skipping_indx, start_skill_indices)
+
 		overshoot_possible = np.logical_and(is_success, next_skill_avail).astype(np.intc) * int(self.do_overshoot)
 
 		## if overshoot possible, choose next skill indx, otherwise, sample new skill indx
-		selected_skill_indices = np.where(overshoot_possible == 1, next_skill_indices, sampled_skill_indices)
+		goal_skill_indices = np.where(overshoot_possible == 1, next_skill_indices, sampled_skill_indices)
 
-		return selected_skill_indices, overshoot_possible
+		return start_skill_indices, goal_skill_indices, overshoot_possible
 
 	def reset(self, env, observation, eval_mode=False):
 		## reset to first skill
@@ -282,23 +289,19 @@ class DCILGoalSetterMj_variant(GoalSetter, ABC):
 		# print("skills_results after = ", self.L_skills_results)
 
 		## sample new skill
-		new_curr_indx, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
+		start_skill_indx, goal_skill_indx, overshoot_possible = self._select_skill_indx(is_success, env.num_envs)
 
-		r = np.random.rand(is_done.shape[0], is_done.shape[1])
-
-		## shift skill indx if skipping
-		start_indx = new_curr_indx.copy()
-		skipping_indx = np.where(r>0.9, new_curr_indx+1, new_curr_indx) ## skipping for 10% of rollouts
-		new_curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, new_curr_indx)
-
-		## change curr_indx if actually done
-		self.curr_indx = np.where(is_done==1, new_curr_indx, self.curr_indx)
-		next_indx = self.curr_indx + 1
-		self.next_indx = np.where(next_indx < self.nb_skills, next_indx, self.curr_indx)
+		## if done and overshoot not possible -> change for random indx
+		# self.curr_indx = np.where(np.logical_and(overshoot_possible))==1, new_curr_indx, self.curr_indx)
+		#
+		# ## if overshoot possible (done & success & curr_indx + 1 < nb_skills) -> change for next indx if possible
+		self.curr_indx = goal_skill_indx
+		next_goal_skill_indx = self.curr_indx + 1
+		self.next_indx = np.where(next_goal_skill_indx < self.nb_skills, next_goal_skill_indx, self.curr_indx)
 
 		## recover skill
-		reset_observations = self.skills_observations[start_indx.reshape(-1),0,:]
-		reset_sim_states = [item for item in itemgetter(*start_indx.reshape(-1))(self.skills_sim_states)]
+		reset_observations = self.skills_observations[start_skill_indx.reshape(-1),0,:]
+		reset_sim_states = [item for item in itemgetter(*start_skill_indx.reshape(-1))(self.skills_sim_states)]
 		reset_max_episode_steps = self.skills_max_episode_steps[self.curr_indx.reshape(-1),0,:]
 		reset_goals = self.skills_goals[self.curr_indx.reshape(-1),0,:]
 

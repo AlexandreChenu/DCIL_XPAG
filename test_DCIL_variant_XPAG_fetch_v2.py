@@ -38,8 +38,8 @@ import gym_gfetch
 ## DCIL versions
 from wrappers.gym_vec_env_mujoco import gym_vec_env
 from skill_extractor import skills_extractor_Mj
-from samplers import HER_DCIL_variant
-from goalsetters import DCILGoalSetterMj_variant
+from samplers import HER_DCIL_variant_v2
+from goalsetters import DCILGoalSetterMj_variant_v2
 from agents import SAC_variant
 
 import pdb
@@ -190,9 +190,9 @@ if (__name__=='__main__'):
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5, beta=2.)
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
-	goalsetter = DCILGoalSetterMj_variant()
+	goalsetter = DCILGoalSetterMj_variant_v2()
 	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)#, n_skills=2)
-	eval_goalsetter = DCILGoalSetterMj_variant()
+	eval_goalsetter = DCILGoalSetterMj_variant_v2()
 	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)#, n_skills=2)
 
 	# print(goalsetter.skills_observations)
@@ -242,7 +242,7 @@ if (__name__=='__main__'):
 		env_info['action_dim'],
 		params = params
 	)
-	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant(env.envs[0].compute_reward, env)
+	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant_v2(env.envs[0].compute_reward, env)
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
 		buffer_size=1_000_000,
