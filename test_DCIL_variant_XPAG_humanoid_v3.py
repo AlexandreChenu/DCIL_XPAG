@@ -42,6 +42,7 @@ from samplers import HER_DCIL_variant_v2
 from goalsetters import DCILGoalSetterMj_variant_v3
 from agents import SAC_variant
 
+import cv2
 
 import pdb
 
@@ -146,10 +147,36 @@ def visu_value(env, eval_env, agent, skill_sequence):
 
 		return values
 
-def eval_traj(env, eval_env, agent, goalsetter):
+def save_frames_as_video(frames, path, iteration):
+
+	video_name = path + '/video' + str(iteration) + '.mp4'
+	height, width, layers = frames[0].shape
+	#resize
+	percent = 100
+	width = int(frames[0].shape[1] * percent / 100)
+	height = int(frames[0].shape[0] * percent / 100)
+
+	video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (width, height))
+
+	for frame in frames:
+		width = int(frame.shape[1] * percent / 100)
+		height = int(frame.shape[0] * percent / 100)
+		dim = (width, height)
+		resize_frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+		cvt_frame = cv2.cvtColor(resize_frame, cv2.COLOR_BGR2RGB)
+		video.write(cvt_frame)
+
+	video.release()
+	cv2.destroyAllWindows()
+
+	return
+
+def eval_traj(env, eval_env, agent, goalsetter, video=False):
 	traj = []
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
+
+	frames = []
 
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
@@ -170,10 +197,24 @@ def eval_traj(env, eval_env, agent, goalsetter):
 				deterministic=True,
 				)
 
+			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
+			# print("eval_env.envs = ", id(eval_env.envs))
+			# print("eval_env = ", id(eval_env))
+			# print("eval_env.env = ", id(eval_env.env))
+			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
+			# print("eval_env.env.envs = ", id(eval_env.env.envs))
+
+			if video:
+				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
+				# print("frame = ", frame)
+				frames.append(frame)
+
 			# print("action = ", action)
 			observation, _, done, info = goalsetter.step(
 				eval_env, observation, action, *eval_env.step(action)
 			)
+
+
 
 			# print("observation eval = ", observation["observation"][0][:15])
 			# print("observation.shape = ", observation["observation"].shape)
@@ -184,7 +225,7 @@ def eval_traj(env, eval_env, agent, goalsetter):
 				break
 		if not next_skill_avail:
 			eval_done = True
-	return traj
+	return traj, frames
 
 
 if (__name__=='__main__'):
@@ -200,6 +241,7 @@ if (__name__=='__main__'):
 	num_envs = 1  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
+
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5)
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
@@ -217,7 +259,7 @@ if (__name__=='__main__'):
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 400_000
+	max_steps = 500_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
@@ -302,7 +344,9 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
+			traj_eval, frames = eval_traj(env, eval_env, agent, eval_goalsetter, video=True)
+			save_frames_as_video(frames, save_dir, i)
+
 			# print("traj_eval = ", traj_eval)
 			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
