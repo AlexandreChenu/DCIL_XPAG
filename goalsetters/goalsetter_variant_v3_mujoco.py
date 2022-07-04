@@ -293,7 +293,7 @@ class DCILGoalSetterMj_variant_v3(GoalSetter, ABC):
 		r = np.random.rand(is_success.shape[0], is_success.shape[1])
 		start_skill_indx = select_skill_indx.copy()
 		skipping_indx = np.where(r>0.9, select_skill_indx+1, select_skill_indx) ## skipping for 10% of rollouts
-		select_skill_indices = np.where(skipping_indx < self.nb_skills, skipping_indx, select_skill_indx)
+		select_skill_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, select_skill_indx)
 
 		# ## if overshoot possible (done & success & curr_indx + 1 < nb_skills) -> change for next indx if possible
 		self.curr_indx = select_skill_indx
