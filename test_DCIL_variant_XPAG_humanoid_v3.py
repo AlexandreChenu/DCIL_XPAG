@@ -43,6 +43,7 @@ from goalsetters import DCILGoalSetterMj_variant_v3
 from agents import SAC_variant
 
 import cv2
+import pickle
 
 import pdb
 
@@ -171,12 +172,20 @@ def save_frames_as_video(frames, path, iteration):
 
 	return
 
-def eval_traj(env, eval_env, agent, goalsetter, video=False):
+def save_sim_traj(sim_traj, path, iteration):
+
+	with open(path + "/sim_traj_" + str(iteration) + ".pickle", 'wb') as handle:
+		pickle.dump(sim_traj, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+	return
+
+def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
 
 	frames = []
+	sim_states = []
 
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
@@ -204,10 +213,15 @@ def eval_traj(env, eval_env, agent, goalsetter, video=False):
 			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
 			# print("eval_env.env.envs = ", id(eval_env.env.envs))
 
-			if video:
+			if save_video:
 				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
 				# print("frame = ", frame)
 				frames.append(frame)
+
+			if save_sim_traj:
+				sim_state = eval_env.envs[0].env.get_inner_state()
+				# print("sim_state = ", sim_state)
+				sim_states.append(sim_state)
 
 			# print("action = ", action)
 			observation, _, done, info = goalsetter.step(
@@ -225,7 +239,7 @@ def eval_traj(env, eval_env, agent, goalsetter, video=False):
 				break
 		if not next_skill_avail:
 			eval_done = True
-	return traj, frames
+	return traj, frames, sim_states
 
 
 if (__name__=='__main__'):
@@ -277,6 +291,8 @@ if (__name__=='__main__'):
 
 	save_episode = True
 	plot_projection = None
+	do_save_video = False
+	do_save_sim_traj = True
 
 	params = {
 		"actor_lr": 0.001,
@@ -321,6 +337,7 @@ if (__name__=='__main__'):
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
+
 	for i in range(max_steps // env_info["num_envs"]):
 		# print("learn: ", eval_env.project_to_goal_space(observation["observation"][0]))
 		traj.append(observation["observation"].copy())
@@ -344,8 +361,11 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, frames = eval_traj(env, eval_env, agent, eval_goalsetter, video=True)
-			save_frames_as_video(frames, save_dir, i)
+			traj_eval, frames, sim_traj = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+			if do_save_video:
+				save_frames_as_video(frames, save_dir, i)
+			if do_save_sim_traj:
+				save_sim_traj(sim_traj, save_dir, i)
 
 			# print("traj_eval = ", traj_eval)
 			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
