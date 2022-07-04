@@ -115,7 +115,7 @@ def eval_traj(env, eval_env, agent, goalsetter):
 		for i_step in range(0,int(max_steps[0])):
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			traj.append(observation["observation"].copy())
-			if hasattr(env, "fake_rms"):
+			if hasattr(env, "obs_rms"):
 				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
 													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
 													observation["bin_skill_indx"])),
@@ -325,7 +325,7 @@ if (__name__=='__main__'):
 		else:
 			env.do_update = False
 			t1_a_select = time.time()
-			if hasattr(eval_env, "fake_rms"):
+			if hasattr(eval_env, "obs_rms"):
 				action = agent.select_action(
 					observation
 					if not env_info["is_goalenv"]
