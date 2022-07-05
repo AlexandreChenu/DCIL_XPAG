@@ -19,9 +19,9 @@ def load_sim_traj(path):
 
 	return sim_traj
 
-def save_frames_as_video(frames, path):
+def save_frames_as_video(frames, path, it):
 
-	video_name = path + '/video.mp4'
+	video_name = path + '/video_' + str(it) + '.mp4'
 	height, width, layers = frames[0].shape
 	#resize
 	percent = 100
@@ -48,22 +48,24 @@ if (__name__=='__main__'):
 
 	env = gym.make("GHumanoid-v0")
 
-	traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/20220705_3920067/sim_traj_490000.pickle"
-	sim_traj = load_sim_traj(traj_path)
-	print(len(sim_traj))
 
-	frames = []
+	for train_it in range(490000, 500000, 2000):
+		traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/to_eval/20220705_3964551/sim_traj_" + str(train_it) + ".pickle" #498000.pickle"
+		sim_traj = load_sim_traj(traj_path)
+		print(len(sim_traj))
 
-	env.reset()
+		frames = []
 
-	for sim_state in sim_traj:
-		# time.sleep(0.1)
-		print("sim_state = ", sim_state)
-		env.set_inner_state(sim_state)
-		env.sim.forward()
-		frame = env.env.sim.render(width=1080, height=1080, mode="offscreen")
-		frames.append(frame)
+		env.reset()
 
-	env.close()
+		for sim_state in sim_traj:
+			# time.sleep(0.1)
+			print("sim_state = ", sim_state)
+			env.set_inner_state(sim_state)
+			env.sim.forward()
+			frame = env.env.sim.render(width=1080, height=1080, mode="offscreen")
+			frames.append(frame)
 
-	save_frames_as_video(frames, "/Users/chenu/Desktop/PhD/github/dcil_xpag/test/")
+		env.close()
+
+		save_frames_as_video(frames, "/Users/chenu/Desktop/PhD/github/dcil_xpag/test/", train_it)
