@@ -261,9 +261,9 @@ if (__name__=='__main__'):
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	goalsetter = DCILGoalSetterMj_variant_v3()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=4)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=7)
 	eval_goalsetter = DCILGoalSetterMj_variant_v3()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=4)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=7)
 
 	# print(goalsetter.skills_observations)
 	# print(goalsetter.skills_full_states)

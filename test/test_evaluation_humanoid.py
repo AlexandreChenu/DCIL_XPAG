@@ -48,7 +48,7 @@ if (__name__=='__main__'):
 
 	env = gym.make("GHumanoid-v0")
 
-	traj_path = "/Users/chenu/results/xpag/DCIL_XPAG_humanoid/20220704_33281/sim_traj_2000.pickle"
+	traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/20220705_3920067/sim_traj_490000.pickle"
 	sim_traj = load_sim_traj(traj_path)
 	print(len(sim_traj))
 
