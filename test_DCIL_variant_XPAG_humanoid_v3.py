@@ -270,7 +270,7 @@ if (__name__=='__main__'):
 	# print(goalsetter.skills_max_episode_steps)
 	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
 
-	batch_size = 256
+	batch_size = 64
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
 	max_steps = 500_000
@@ -295,9 +295,9 @@ if (__name__=='__main__'):
 	do_save_sim_traj = True
 
 	params = {
-		"actor_lr": 0.001,
+		"actor_lr": 0.0003,
 		"backup_entropy": False,
-		"critic_lr": 0.001,
+		"critic_lr": 0.0003,
 		"discount": 0.98,
 		"hidden_dims": (512, 512, 512),
 		# "hidden_dims": (400,300),
