@@ -11,6 +11,8 @@ import pdb
 
 import time
 
+import mujoco_py
+
 
 def load_sim_traj(path):
 
@@ -49,8 +51,11 @@ if (__name__=='__main__'):
 	env = gym.make("GHumanoid-v0")
 
 
-	for train_it in range(490000, 500000, 2000):
-		traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/to_eval/20220705_3964551/sim_traj_" + str(train_it) + ".pickle" #498000.pickle"
+
+
+
+	for train_it in range(938000, 942000, 2000):
+		traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/v4/DCIL_v4_20220706_1957521/sim_traj_" + str(train_it) + ".pickle" #498000.pickle"
 		sim_traj = load_sim_traj(traj_path)
 		print(len(sim_traj))
 
@@ -58,13 +63,27 @@ if (__name__=='__main__'):
 
 		env.reset()
 
+		# viewer = mujoco_py.MjViewer(env.sim)
+		# target = 'torso'
+
 		for sim_state in sim_traj:
 			# time.sleep(0.1)
 			print("sim_state = ", sim_state)
 			env.set_inner_state(sim_state)
 			env.sim.forward()
-			frame = env.env.sim.render(width=1080, height=1080, mode="offscreen")
+
+			frame = env.env.sim.render(width=3000, height=1000, mode="offscreen")
 			frames.append(frame)
+
+			# viewer.scn.flags[2] = 0 # Disable reflections (~25% speedup)
+			# body_id = env.sim.model.body_name2id(target)
+			# lookat = env.sim.data.body_xpos[body_id]
+			# for idx, value in enumerate(lookat):
+			# 	viewer.cam.lookat[idx] = value
+			# viewer.render()
+			# img = viewer.read_pixels(1080, 1080, depth=False)
+			# img = img[::-1, :, :]
+			# frames.append(img)
 
 		env.close()
 
