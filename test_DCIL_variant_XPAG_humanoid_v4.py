@@ -250,6 +250,8 @@ if (__name__=='__main__'):
 	parser = argparse.ArgumentParser(description='Argument for DCIL')
 	parser.add_argument('--demo_path', help='path to demonstration file')
 	parser.add_argument('--save_path', help='path to save directory')
+	parser.add_argument('--eps_state', help='distance between 2 consecutive goal')
+
 	parsed_args = parser.parse_args()
 
 	env_args = {}
@@ -261,7 +263,7 @@ if (__name__=='__main__'):
 	num_skills = 10
 
 
-	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5)
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	goalsetter = DCILGoalSetterMj_variant_v4()
