@@ -258,7 +258,7 @@ if (__name__=='__main__'):
 	num_envs = 1  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
-	num_skills = 7
+	num_skills = 10
 
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5)
@@ -277,13 +277,13 @@ if (__name__=='__main__'):
 	batch_size = 64
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 500_000
+	max_steps = 1_000_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
 	## create log dir
 	now = datetime.now()
-	dt_string = '%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
+	dt_string = 'DCIL_v4_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
 	# save_dir = os.path.join('/gpfswork/rech/kcr/ubj56je', 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string

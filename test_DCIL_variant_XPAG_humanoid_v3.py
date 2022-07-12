@@ -273,7 +273,7 @@ if (__name__=='__main__'):
 	batch_size = 64
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 500_000
+	max_steps = 1_000_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
 
