@@ -42,6 +42,9 @@ class SAC_variant(Agent, ABC):
 		else:
 			start_seed = 42
 
+		# print("value_clipping = ", type(params["value_clipping"]))
+		# print("backup_entropy = ", type(params["backup_entropy"]))
+
 		# self.jaxrl_params = {
 		# 	"actor_lr": 0.001,
 		# 	"backup_entropy": False,

@@ -251,6 +251,7 @@ if (__name__=='__main__'):
 	parser.add_argument('--demo_path', help='path to demonstration file')
 	parser.add_argument('--save_path', help='path to save directory')
 	parser.add_argument('--eps_state', help='distance between 2 consecutive goal')
+	parser.add_argument('--value_clipping', help='add value clipping in critic update?')
 
 	parsed_args = parser.parse_args()
 
@@ -303,6 +304,7 @@ if (__name__=='__main__'):
 	params = {
 		"actor_lr": 0.0003,
 		"backup_entropy": False,
+		"value_clipping": bool(parsed_args.value_clipping),
 		"critic_lr": 0.0003,
 		"discount": 0.98,
 		"hidden_dims": (512, 512, 512),
