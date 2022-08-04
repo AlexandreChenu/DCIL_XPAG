@@ -245,9 +245,8 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 				break
 		if not next_skill_avail:
 			eval_done = True
-	print("cumulative env reward = ", sum_env_reward)
 
-	return traj, frames, sim_states
+	return traj, frames, sim_states, sum_env_reward
 
 
 if (__name__=='__main__'):
@@ -300,6 +299,7 @@ if (__name__=='__main__'):
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
 	f_values = open(save_dir + "/value_start_states.txt", "w")
+	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -374,16 +374,20 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, frames, sim_traj = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
 			if do_save_video:
 				save_frames_as_video(frames, save_dir, i)
 			if do_save_sim_traj:
 				save_sim_traj(sim_traj, save_dir, i)
 
+			print("| cumulative env reward = ", total_env_reward)
+
+			f_total_eval_reward.write(str(total_env_reward) + "\n")
+
 			# print("traj_eval = ", traj_eval)
 			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
-			print("values = ", values)
+			print("| values = ", values)
 			for value in values:
 				f_values.write(str(value) + " ")
 			f_values.write("\n")
