@@ -190,6 +190,8 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 	frames = []
 	sim_states = []
 
+	sum_env_reward = 0
+
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
 		# print("curr_indx = ", goalsetter.curr_indx)
@@ -231,6 +233,7 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 				eval_env, observation, action, *eval_env.step(action)
 			)
 
+			sum_env_reward += info["reward_from_env"][0]
 
 
 			# print("observation eval = ", observation["observation"][0][:15])
@@ -242,6 +245,8 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 				break
 		if not next_skill_avail:
 			eval_done = True
+	print("cumulative env reward = ", sum_env_reward)
+
 	return traj, frames, sim_states
 
 
@@ -261,7 +266,7 @@ if (__name__=='__main__'):
 	num_envs = 1  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
-	num_skills = 10
+	num_skills = 7
 
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))

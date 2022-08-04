@@ -514,7 +514,7 @@ def update_critic(
 	target_q = batch.rewards
 
 	if value_clipping:
-		max_value = jnp.ones(next_q.shape)*12.
+		max_value = jnp.ones(next_q.shape)*5.
 		max_clipped_next_q = jnp.minimum(next_q, max_value)
 		min_value = jnp.zeros(next_q.shape)
 		clipped_next_q = jnp.maximum(max_clipped_next_q, min_value)
