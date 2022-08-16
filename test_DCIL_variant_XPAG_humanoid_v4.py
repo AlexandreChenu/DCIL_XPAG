@@ -182,8 +182,9 @@ def save_sim_traj(sim_traj, path, iteration):
 
 	return
 
-def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=False):
+def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
+	traj_length = 0
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
 
@@ -192,12 +193,14 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 
 	sum_env_reward = 0
 
-	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
+	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
+	while traj_length < demo_length and not eval_done:
 		# skill_success = False
 		# print("curr_indx = ", goalsetter.curr_indx)
 		max_steps = eval_env.get_max_episode_steps()
 		# print("max_steps = ", max_steps)
 		for i_step in range(0,int(max_steps[0])):
+			traj_length += 1
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			traj.append(observation["observation"].copy())
 			if hasattr(env, "obs_rms"):
@@ -243,6 +246,9 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 			if done.max():
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
 				break
+			if traj_length >= demo_length:
+				break
+
 		if not next_skill_avail:
 			eval_done = True
 
@@ -265,11 +271,14 @@ if (__name__=='__main__'):
 	num_envs = 1  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
 	print("env = ", env)
-	num_skills = 7
+	num_skills = None
 
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
+
+	if num_skills == None:
+		num_skills = len(s_extractor.skills_sequence)
 
 	goalsetter = DCILGoalSetterMj_variant_v4()
 	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=num_skills)
@@ -374,7 +383,7 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
 			if do_save_video:
 				save_frames_as_video(frames, save_dir, i)
 			if do_save_sim_traj:

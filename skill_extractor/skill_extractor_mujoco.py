@@ -26,8 +26,18 @@ class skills_extractor_Mj():
 		self.beta = beta
 
 		self.L_observations, self.L_sim_states = self.get_demo(demo_path)
+
+		self.L_observations = self.L_observations[:150]
+		self.L_sim_states = self.L_sim_states[:150]
+
+		self.demo_length = len(self.L_observations)
+		# print("len(L_obs) = ", len(self.L_observations))
+		# print("len(L_sim) = ", len(self.L_sim_states))
+		# print("demo_length = ", self.demo_length)
 		# print("self.L_observations = ", self.L_observations)
-		self.skills_sequence = self.get_skills(self.L_observations, self.L_sim_states)
+		self.skills_sequence, self.demo_length = self.get_skills(self.L_observations, self.L_sim_states)
+
+		# print("demo_length = ", self.demo_length)
 
 		## visual test
 		# self.test_visu()
@@ -91,9 +101,11 @@ class skills_extractor_Mj():
 
 		curr_starting_state = (curr_state.copy(), L_sim_states[0])
 
+		demo_length = 0
+
 		i = 0
 		while i < len(L_sim_states)-1:
-			k = 1
+			k = 0
 			sum_dist = 0
 
 			# cumulative distance
@@ -106,6 +118,7 @@ class skills_extractor_Mj():
 				# print("sum_dist = ", sum_dist)
 				curr_state = shifted_state.copy()
 				k += 1
+				demo_length += 1
 
 			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
 			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 100), shifted_state.copy()))
@@ -128,7 +141,7 @@ class skills_extractor_Mj():
 			curr_starting_state = (curr_state, L_sim_states[i-1])
 
 		# print("len(skills_sequence) = ", len(skills_sequence))
-		return skills_sequence
+		return skills_sequence, demo_length
 
 
 if (__name__=='__main__'):
