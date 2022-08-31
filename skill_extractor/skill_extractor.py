@@ -13,7 +13,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 class skills_extractor():
-	def __init__(self, demo_path, env, eps_state=1., beta=1.25):
+	def __init__(self, demo_path, env, eps_state=0.4, beta=1.25):
 
 		self.env = env
 		self.num_envs = env.num_envs
@@ -23,6 +23,7 @@ class skills_extractor():
 		self.beta = beta
 
 		self.L_observations, self.L_sim_states = self.get_demo(demo_path)
+		print("L_observations = ", self.L_observations)
 		self.skills_sequence = self.get_skills(self.L_observations, self.L_sim_states)
 
 		## visual test
@@ -85,12 +86,15 @@ class skills_extractor():
 		curr_starting_state = (curr_state.copy(), curr_state.copy())
 
 		i = 0
-		while i < len(L_sim_states)-1:
-			k = 1
+		while i < len(L_sim_states):
+			k = 0
 			sum_dist = 0
 
 			# cumulative distance
-			while sum_dist <= self.eps_state and i + k < len(L_observations) - 1:
+			while sum_dist <= self.eps_state and i + k < len(L_observations) :
+				# print("sum_dist = ", sum_dist)
+				# print("curr_state = ", curr_state)
+				# print("k = ", k)
 				self.env.set_state(L_observations[i+k], np.ones((1,)))
 				shifted_state = self.env.get_state()
 				# print("shifted_state = ", shifted_state)
@@ -103,6 +107,7 @@ class skills_extractor():
 			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
 			skills_sequence.append((curr_starting_state, 25, shifted_state.copy()))
 			i = i + k
+			# print("i = ", i)
 			curr_starting_state = (curr_state, curr_state)
 
 		# print("len(skills_sequence) = ", len(skills_sequence))

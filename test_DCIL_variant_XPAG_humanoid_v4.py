@@ -247,6 +247,7 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
 				break
 			if traj_length >= demo_length:
+				next_skill_avail = False
 				break
 
 		if not next_skill_avail:

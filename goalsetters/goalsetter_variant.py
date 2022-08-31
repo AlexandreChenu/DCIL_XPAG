@@ -76,13 +76,15 @@ class DCILGoalSetter_variant(GoalSetter, ABC):
 	def load(self, directory: str):
 		pass
 
-	def set_skills_sequence(self, sseq, env):
+	def set_skills_sequence(self, sseq, env, n_skills=None):
 		"""
 		sseq = [skill_1, skill_2, ...]
 		skill_i = ((starting_observation, starting_full_state), skill_length, skill_goal)
 		"""
-		self.skills_sequence = [sseq[0], sseq[1], sseq[2], sseq[3]]
-		# self.skills_sequence = sseq
+		if n_skills is not None:
+			self.skills_sequence = sseq[:n_skills]
+		else:
+			self.skills_sequence = sseq
 		self.nb_skills = len(self.skills_sequence)
 		self.curr_indx = np.zeros((env.num_envs,1)).astype(np.intc)
 

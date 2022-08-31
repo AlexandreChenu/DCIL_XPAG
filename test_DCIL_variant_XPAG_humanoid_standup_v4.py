@@ -47,6 +47,8 @@ import pickle
 
 import pdb
 
+from scipy.spatial.transform import Rotation
+
 def visu_success_zones(eval_env, skill_sequence, ax):
 	"""
 	Visualize success zones as sphere of radius eps_success around skill-goals
@@ -182,20 +184,25 @@ def save_sim_traj(sim_traj, path, iteration):
 
 	return
 
-def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=False):
+def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
+	traj_length = 0
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
 
 	frames = []
 	sim_states = []
 
-	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
+	sum_env_reward = 0
+
+	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
+	while traj_length < demo_length and not eval_done:
 		# skill_success = False
 		# print("curr_indx = ", goalsetter.curr_indx)
 		max_steps = eval_env.get_max_episode_steps()
 		# print("max_steps = ", max_steps)
 		for i_step in range(0,int(max_steps[0])):
+			traj_length += 1
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			traj.append(observation["observation"].copy())
 			if hasattr(env, "obs_rms"):
@@ -231,6 +238,7 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 				eval_env, observation, action, *eval_env.step(action)
 			)
 
+			sum_env_reward += info["reward_from_env"][0]
 
 
 			# print("observation eval = ", observation["observation"][0][:15])
@@ -240,9 +248,14 @@ def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=
 			if done.max():
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
 				break
+			if traj_length >= demo_length:
+				next_skill_avail = False
+				break
+
 		if not next_skill_avail:
 			eval_done = True
-	return traj, frames, sim_states
+
+	return traj, frames, sim_states, sum_env_reward
 
 
 if (__name__=='__main__'):
@@ -295,6 +308,7 @@ if (__name__=='__main__'):
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
 	f_values = open(save_dir + "/value_start_states.txt", "w")
+	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -369,11 +383,15 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, frames, sim_traj = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
 			if do_save_video:
 				save_frames_as_video(frames, save_dir, i)
 			if do_save_sim_traj:
 				save_sim_traj(sim_traj, save_dir, i)
+
+			print("| cumulative env reward = ", total_env_reward)
+
+			f_total_eval_reward.write(str(total_env_reward) + "\n")
 
 			# print("traj_eval = ", traj_eval)
 			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
