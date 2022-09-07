@@ -13,7 +13,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 class skills_extractor():
-	def __init__(self, demo_path, env, eps_state=0.4, beta=1.25):
+	def __init__(self, demo_path, env, eps_state=1., beta=1.25):
 
 		self.env = env
 		self.num_envs = env.num_envs

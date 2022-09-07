@@ -39,7 +39,7 @@ import gym_gmazes
 from wrappers.gym_vec_env import gym_vec_env
 from skill_extractor import *
 from samplers import HER_DCIL_variant_v2 as HER_DCIL_variant
-from goalsetters import DCILGoalSetter_variant
+from goalsetters import DCILGoalSetter_variant_v4 as DCILGoalSetter_variant
 from agents import SAC_variant
 
 import pdb
@@ -87,6 +87,8 @@ import torch
 @torch.no_grad()
 def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
+	convert_table = np.eye(len(skill_sequence))
+
 	thetas = np.linspace(-torch.pi/2.,torch.pi/2.,100)
 
 	values = []
@@ -96,14 +98,16 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	# print("skill_0 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state
+	oh_skill_indx = convert_table[0]
 
 	next_skill = skill_sequence[1]
 	# print("skill_0 = ", skill)
 	_, _, next_goal = next_skill
+	oh_next_skill_indx = convert_table[1]
 
 	obs["observation"][0][:] = observation[0][:]
 	obs["desired_goal"][0][:] = goal[0][:2]
-	obs["skill_indx"] = np.array([[0]])
+	obs["skill_indx"] = np.array([oh_skill_indx])
 	for theta in list(thetas):
 		obs["observation"][0][2] = theta
 		#print("obs = ", obs["observation"])
@@ -145,14 +149,16 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 	# print("skill_8 = ", skill)
 	starting_state, _, goal = skill
 	observation, full_state = starting_state
+	oh_skill_indx = convert_table[1]
 
 	next_skill = skill_sequence[2]
 	# print("skill_0 = ", skill)
 	_, _, next_goal = next_skill
+	oh_next_skill_indx = convert_table[2]
 
 	obs["observation"][0][:] = observation[0][:]
 	obs["desired_goal"][0][:] = goal[0][:2]
-	obs["skill_indx"] = np.array([[1]])
+	obs["skill_indx"] = np.array([oh_skill_indx])
 
 	for theta in list(thetas):
 		obs["observation"][0][2] = theta
@@ -188,6 +194,8 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 		skill_indices = [0,1,2]
 
+		convert_table = np.eye(len(skill_sequence))
+
 		for skill_indx in skill_indices:
 
 			obs = eval_env.reset()
@@ -217,7 +225,7 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 					obs["observation"][0][:] = np.array([x,y,theta])
 					obs["achieved_goal"][0][:] = np.array([x,y])
 					obs["desired_goal"][0][:] = desired_goal[0][:2]
-					obs["skill_indx"] = np.array([[skill_indx]])
+					obs["skill_indx"] = np.array([convert_table[skill_indx]])
 
 					if hasattr(env, "obs_rms"):
 						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
@@ -286,11 +294,11 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			if hasattr(env, "obs_rms"):
 				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
 													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-													observation["skill_indx"])),
+													observation["oh_skill_indx"])),
 					deterministic=True,
 				)
 			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["skill_indx"])),
+				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
 				deterministic=True,
 				)
 			# print("action = ", action)
@@ -364,6 +372,7 @@ if (__name__=='__main__'):
 	print("eval_env.num_envs = ", eval_env.num_envs)
 
 	s_extractor = skills_extractor(parsed_args.demo_path, eval_env)
+	num_skills = len(s_extractor.skills_sequence)
 
 	goalsetter = DCILGoalSetter_variant(env)
 	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)
@@ -399,7 +408,7 @@ if (__name__=='__main__'):
 
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
-		else env_info['observation_dim'] + env_info['desired_goal_dim'] + 1,
+		else env_info['observation_dim'] + env_info['desired_goal_dim'] + num_skills,
 		env_info['action_dim'],
 		params = {
 			"actor_lr": 0.001,
@@ -488,7 +497,7 @@ if (__name__=='__main__'):
 					if not env_info["is_goalenv"]
 					else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
 									env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
-									observation["skill_indx"])),
+									observation["oh_skill_indx"])),
 					deterministic=False,
 				)
 
@@ -496,7 +505,7 @@ if (__name__=='__main__'):
 				action = agent.select_action(
 					observation
 					if not env_info["is_goalenv"]
-					else np.hstack((observation["observation"], observation["desired_goal"], observation["skill_indx"])),
+					else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
 					deterministic=False,
 				)
 			# t2_a_select = time.time()
@@ -536,8 +545,8 @@ if (__name__=='__main__'):
 			step["done_from_env"] = info["done_from_env"]
 			step["is_success"] = info["is_success"]
 			step["last_skill"] = (info["skill_indx"] == info["next_skill_indx"]).reshape(observation["desired_goal"].shape[0], 1)
-			step["skill_indx"] = info["skill_indx"].reshape(observation["desired_goal"].shape[0], 1)
-			step["next_skill_indx"] = info["next_skill_indx"].reshape(observation["desired_goal"].shape[0], 1)
+			step["skill_indx"] = observation["oh_skill_indx"].reshape(observation["desired_goal"].shape[0], num_skills)
+			step["next_skill_indx"] = observation["oh_next_skill_indx"].reshape(observation["desired_goal"].shape[0], num_skills)
 			step["next_skill_goal"] = info["next_skill_goal"].reshape(observation["desired_goal"].shape)
 
 		buffer_.insert(step)

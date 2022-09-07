@@ -31,9 +31,6 @@ class skills_extractor_Mj():
 		self.L_sim_states = self.L_sim_states[:150]
 
 		self.demo_length = len(self.L_observations)
-
-		print("demo_length = ", self.demo_length)
-		
 		# print("len(L_obs) = ", len(self.L_observations))
 		# print("len(L_sim) = ", len(self.L_sim_states))
 		# print("demo_length = ", self.demo_length)
