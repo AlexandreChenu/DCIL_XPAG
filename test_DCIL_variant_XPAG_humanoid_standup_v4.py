@@ -427,6 +427,13 @@ if (__name__=='__main__'):
 				num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 				num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
+				curr_indx = info["skill_indx"][0][0]
+				reset_indx = info["reset_skill_indx"][0][0]
+
+				for c_i in range(reset_indx, curr_indx):
+					num_rollouts_skill[reset_indx][c_i] += 1
+					num_success_skill[reset_indx][c_i] += 1
+
 			print("------------------------------------------------------------------------------------------------------------")
 
 		if not i % max(save_agent_every_x_steps // env_info["num_envs"], 1):
@@ -513,7 +520,7 @@ if (__name__=='__main__'):
 			num_rollouts += 1
 			num_rollouts_skill[reset_indx][curr_indx] += 1
 
-			if info["is_success"].max() == 1:
+			if info["is_success"].max():
 				num_success += 1
 				num_success_skill[reset_indx][curr_indx] += 1
 
