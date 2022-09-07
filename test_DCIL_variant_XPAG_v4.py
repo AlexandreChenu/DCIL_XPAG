@@ -284,12 +284,20 @@ def eval_traj(env, eval_env, agent, goalsetter):
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
 
+	max_zone = 0
+
 	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
 		# print("curr_indx = ", goalsetter.curr_indx)
 		for i_step in range(0,eval_env.max_episode_steps.int()):
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			# print("observation = ", observation)
+
+			## update max zone
+			zone = eval_zone(observation["observation"][0])
+			if zone > max_zone:
+				max_zone = zone
+
 			traj.append(observation["observation"])
 			if hasattr(env, "obs_rms"):
 				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
@@ -311,7 +319,65 @@ def eval_traj(env, eval_env, agent, goalsetter):
 				break
 		if not next_skill_avail:
 			eval_done = True
-	return traj
+	return traj, max_zone
+
+def eval_zone(state):
+    x = state[0]
+    y = state[1]
+    if y < 1.:
+        if x < 1.:
+            return 1
+        elif  x < 2.:
+            return 2
+        elif  x < 3.:
+            return 3
+        elif  x < 4.:
+            return 4
+        else:
+            return 5
+    elif y < 2.:
+        if  x > 4.:
+            return 6
+        elif  x > 3.:
+            return 7
+        elif x > 2.:
+            return 8
+        else:
+            return 11
+    elif y < 3.:
+        if x < 1.:
+            return 11
+        elif x < 2.:
+            return 10
+        elif x < 3.:
+            return 9
+        elif x < 4.:
+            return 20
+        else :
+            return 21
+
+    elif y < 4.:
+        if x < 1.:
+            return 12
+        elif x < 2.:
+            return 15
+        elif x < 3.:
+            return 16
+        elif x < 4:
+            return 19
+        else :
+            return 22
+    else:
+        if x < 1.:
+            return 13
+        elif x < 2.:
+            return 14
+        elif x < 3.:
+            return 17
+        elif x < 4:
+            return 18
+        else :
+            return 23
 
 def visu_transitions(eval_env, transitions, it=0):
 	fig, ax = plt.subplots()
@@ -402,6 +468,7 @@ if (__name__=='__main__'):
 	## log file for success ratio
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
+	f_max_zone = open(save_dir + "/max_zone.txt", "w")
 
 	save_episode = True
 	plot_projection = None
@@ -459,10 +526,13 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval = eval_traj(env, eval_env, agent, eval_goalsetter)
+			traj_eval, max_zone = eval_traj(env, eval_env, agent, eval_goalsetter)
 			plot_traj(trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
 			visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
+
+			f_max_zone.write(str(max_zone) + "\n")
+			f_max_zone.flush()
 
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
@@ -572,3 +642,4 @@ if (__name__=='__main__'):
 
 	f_ratio.close()
 	f_critic_loss.close()
+	f_max_zone.close()
