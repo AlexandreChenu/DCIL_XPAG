@@ -53,7 +53,7 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		# assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
 
 		self.last_info = info.copy()
-		self.last_done = done
+		self.last_done = done.copy()
 
 		# print("reward = ", reward)
 		# print("info['is_success'] = ", info["is_success"])
@@ -304,7 +304,7 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		self.next_indx = np.where(next_skill_indx < self.nb_skills, next_skill_indx, self.curr_indx)
 
 		## update reset indx to curr indx if no overshoot
-		self.reset_indx = np.where(np.logical_and(is_done, np.logical_not(overshoot_possible)).astype(np.intc)==1, self.curr_indx, self.reset_indx)
+		self.reset_indx = np.where(overshoot_possible, self.reset_indx, self.curr_indx)
 
 		## recover skill
 		reset_observations = self.skills_observations[start_skill_indx.reshape(-1),0,:]

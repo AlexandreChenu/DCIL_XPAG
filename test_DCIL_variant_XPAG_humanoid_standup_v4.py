@@ -427,8 +427,8 @@ if (__name__=='__main__'):
 				num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 				num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
-				curr_indx = info["skill_indx"][0][0]
-				reset_indx = info["reset_skill_indx"][0][0]
+				curr_indx = goalsetter.curr_indx[0][0]
+				reset_indx = goalsetter.reset_indx[0][0]
 
 				for c_i in range(reset_indx, curr_indx):
 					num_rollouts_skill[reset_indx][c_i] += 1
@@ -482,7 +482,10 @@ if (__name__=='__main__'):
 		t2_step = time.time()
 		# print("step time = ", t2_step - t1_step)
 
-		# print("done = ", done)
+		# print("curr_indx = ", goalsetter.curr_indx)
+		# print("reset_indx = ", goalsetter.reset_indx)
+		# print("curr_indx info = ", info["skill_indx"])
+		# print("reset_indx info = ", info["reset_skill_indx"])
 
 		# pdb.set_trace()
 
@@ -528,6 +531,9 @@ if (__name__=='__main__'):
 			if hasattr(buffer_, "store_done"):
 				buffer_.store_done()
 			observation = goalsetter.reset_done(env, env.reset_done())
+
+			print("\reset_done")
+
 			if len(traj) > 0:
 				if info["is_success"].max() == 1:
 					s_trajs.append(traj)
