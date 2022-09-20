@@ -31,11 +31,11 @@ Check this [Repo](https://github.com/perrin-isir/xpag) for instructions.
 
 4. Install physical simulators, 
 
-[https://github.com/openai/mujoco-py]Mujoco
+[Mujoco](https://github.com/openai/mujoco-py)
 
-[https://pypi.org/project/pybullet/]PyBullet
+[PyBullet](https://pypi.org/project/pybullet/)
 
-[https://github.com/google/brax]Brax
+[Brax](https://github.com/google/brax)
 
 
 4. Clone + install maze or humanoid environments 
