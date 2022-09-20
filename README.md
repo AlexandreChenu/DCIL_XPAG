@@ -1,8 +1,6 @@
 # DCIL_XPAG
 Implementation of DCIL-II based on jax-based XPAG library. 
 
-> **_NOTE:_**  Work-in-progress. No bonus & overshoot implemented yet. 
-
 # Install 
 
 1. Clone DCIL repo,
@@ -68,11 +66,15 @@ python test_DCIL_XPAG.py --demo_path ./demos/dubins_convert/1.demo --save_path /
 python test_DCIL_variant_XPAG_humanoid_v4.py --demo_path ./demos/humanoid_convert/1.demo --save_path <path_to_results_directory> --eps_state 0.5  --value_clipping 1
 ```
 
+(should work and learn sequential goal reaching with less than 1m training steps)
+
 # Run Humanoid Experiment (PyBullet version) 
 
 ```sh
 python test_DCIL_variant_XPAG_humanoid_walk_PB_v4.py --demo_path <path_to_this_directory>/demos/humanoid_PB_walk/ --save_path <path_to_results_directory> --eps_state 0.2  --value_clipping 1
 ```
+
+(not working at the moment. Code running but no skill learning) 
 
 > **_NOTE:_**  PyBullet installation requires python==3.8  
 
