@@ -11,10 +11,20 @@ git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
 
 2. Create virtual environment dcil_env from environment.ylm,
 
+
+If your want to use Mujoco environments: 
 ```sh
 cd DCIL_XPAG
 conda env create --name dcil_env --file environment.yml
 ```
+
+If you want to use PyBullet environments:
+
+```sh
+cd DCIL_XPAG
+conda env create --name dcil_env_pybullet --file environment_pybullet.yml
+```
+
 
 3. Clone + install XPAG (+ Jax),
 
