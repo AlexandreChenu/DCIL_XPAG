@@ -67,7 +67,7 @@ pip install -e .
 # Run Dubins Experiment
 
 ```sh
-python test_DCIL_XPAG.py --demo_path ./demos/dubins_convert/1.demo --save_path /path/to/save/path
+python test_DCIL_variant_XPAG_v4.py --demo_path ./demos/dubins_convert/1.demo --save_path /path/to/save/path
 ```
 
 # Run Humanoid Experiment (Mujoco version)
