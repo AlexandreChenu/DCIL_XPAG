@@ -2,6 +2,7 @@
 
 import os
 
+from utils import check_skill_matrix_valid
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
@@ -428,6 +429,15 @@ if (__name__=='__main__'):
 				num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 				num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
+				curr_indx = goalsetter.curr_indx[0][0]
+				reset_indx = goalsetter.reset_indx[0][0]
+
+				if curr_indx > reset_indx:
+					num_success_skill[reset_indx,:curr_indx] = 1
+					num_rollouts_skill[reset_indx,:curr_indx] = 1
+
+				check_skill_matrix_valid(num_rollouts_skill,num_success_skill)
+
 			print("------------------------------------------------------------------------------------------------------------")
 
 		if not i % max(save_agent_every_x_steps // env_info["num_envs"], 1):
@@ -550,6 +560,7 @@ if (__name__=='__main__'):
 					f_trajs.append(traj)
 				traj = []
 		t2_reset_time = time.time()
+		check_skill_matrix_valid(num_rollouts_skill,num_success_skill)
 		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()

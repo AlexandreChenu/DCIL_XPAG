@@ -26,9 +26,9 @@ class skills_extractor_PB():
 		self.beta = beta
 
 		self.L_observations, self.L_inner_states_env, self.L_inner_states_eval_env = self.get_demo(demo_path)
-		self.L_observations = self.L_observations[:200]
-		self.L_inner_states_env = self.L_inner_states_env[:200]
-		self.L_inner_states_eval_env = self.L_inner_states_eval_env[:200]
+		# self.L_observations = self.L_observations[:200]
+		# self.L_inner_states_env = self.L_inner_states_env[:200]
+		# self.L_inner_states_eval_env = self.L_inner_states_eval_env[:200]
 		#
 		self.demo_length = len(self.L_observations)
 		print("self.demo_length = ", self.demo_length)
