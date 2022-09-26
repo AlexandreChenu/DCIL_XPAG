@@ -2,6 +2,7 @@
 
 import os
 
+from utils import check_skill_matrix_valid
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 
@@ -427,12 +428,16 @@ if (__name__=='__main__'):
 				num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 				num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
+
 				curr_indx = goalsetter.curr_indx[0][0]
 				reset_indx = goalsetter.reset_indx[0][0]
 
-				for c_i in range(reset_indx, curr_indx):
-					num_rollouts_skill[reset_indx][c_i] += 1
-					num_success_skill[reset_indx][c_i] += 1
+				if curr_indx > reset_indx:
+					num_success_skill[reset_indx,:curr_indx] = 1
+					num_rollouts_skill[reset_indx,:curr_indx] = 1
+
+				check_skill_matrix_valid(num_rollouts_skill,num_success_skill)
+
 
 			print("------------------------------------------------------------------------------------------------------------")
 
@@ -532,7 +537,7 @@ if (__name__=='__main__'):
 				buffer_.store_done()
 			observation = goalsetter.reset_done(env, env.reset_done())
 
-			print("\reset_done")
+			# print("\reset_done")
 
 			if len(traj) > 0:
 				if info["is_success"].max() == 1:
