@@ -184,7 +184,7 @@ if (__name__=='__main__'):
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
 	num_envs = 1  # the number of rollouts in parallel during training
-	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs)
+	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs, do_normalize=False)
 	print("env = ", env)
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=1., beta=2.)
