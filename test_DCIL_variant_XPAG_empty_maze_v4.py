@@ -33,6 +33,11 @@ from matplotlib import collections as mc
 import numpy as np
 import copy
 
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+import matplotlib as mpl
+
 import gym_gmazes
 
 ## DCIL versions
@@ -41,6 +46,10 @@ from skill_extractor import *
 from samplers import HER_DCIL_variant_v2 as HER_DCIL_variant
 from goalsetters import DCILGoalSetter_variant_v4 as DCILGoalSetter_variant
 from agents import SAC_variant
+
+import seaborn
+seaborn.set()
+seaborn.set_style("whitegrid")
 
 import pdb
 
@@ -141,91 +150,284 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 	return values
 
+# def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
+#
+# 		goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]])]
+#
+# 		convert_table = np.eye(len(skill_sequence))
+#
+# 		skill_indx = 0
+#
+# 		for goal_indx, desired_goal in enumerate(goals):
+#
+# 			obs = eval_env.reset()
+#
+# 			min_x = (0.)
+# 			max_x = (2.)
+# 			min_y = (0.)
+# 			max_y = (2.)
+# 			s_x = np.linspace(min_x, max_x, 50)
+# 			s_y = np.linspace(min_y, max_y, 50)
+#
+# 			states_x, states_y = np.meshgrid(s_x, s_y)
+# 			orientations = np.linspace(-np.pi/2, np.pi/2, 20)
+#
+# 			values = []
+# 			for x, y in zip(states_x.flatten(), states_y.flatten()):
+# 				or_values = []
+# 				for theta in list(orientations):
+# 					obs["observation"][0][:] = np.array([x,y,theta])
+# 					obs["achieved_goal"][0][:] = np.array([x,y])
+# 					obs["desired_goal"][0][:] = desired_goal[0][:2]
+# 					obs["skill_indx"] = np.array([convert_table[skill_indx]])
+#
+# 					if hasattr(env, "obs_rms"):
+# 						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+# 															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+# 															obs["skill_indx"])),
+# 							deterministic=True,
+# 						)
+# 						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+# 												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+# 												   obs["skill_indx"])), action)
+# 					else:
+# 						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+# 							deterministic=True,
+# 						)
+# 						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+# 					or_values.append(value[0])
+#
+# 				values.append(max(or_values))
+#
+# 			# print(states_x.flatten().shape)
+# 			# print(states_y.flatten().shape)
+# 			# print(len(values))
+#
+# 			fig, ax = plt.subplots()
+# 			cb = plt.contourf(states_x, states_y, np.array(values).reshape(states_x.shape), levels=30)
+# 			fig.colorbar(cb)
+# 			eval_env.plot(ax)
+# 			ax.scatter(desired_goal[0][0],desired_goal[0][1])
+#
+# 			circles = []
+# 			for i in range(0,len(skill_sequence)):
+# 				skl = skill_sequence[i]
+# 				st, _, dg = skl
+# 				obs, full_st = st
+# 				circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
+# 				circles.append(circle)
+#
+# 				x = obs[0][0]
+# 				y = obs[0][1]
+# 				dx = np.cos(obs[0][2])
+# 				dy = np.sin(obs[0][2])
+# 				arrow = plt.arrow(x,y,dx*0.3,dy*0.3,alpha = 0.2,width = 0.04, color="m", zorder=6)
+# 				ax.add_patch(arrow)
+#
+# 			coll = mc.PatchCollection(circles, color="plum", alpha = 0.5, zorder = 4)
+# 			ax.add_collection(coll)
+#
+# 			plt.savefig(save_dir + "/visu_value_landscape_" + str(goal_indx) + "_it_" + str(it) + ".png")
+# 			plt.close(fig)
+#
+# 			with open(save_dir + '/values_landscape_goal_' + str(goal_indx) + "_it_" + str(it) + '.npy', 'wb') as f:
+# 				np.save(f, np.array(values).reshape(states_x.shape))
+#
+# 		return
+
 def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
-		skill_indices = [0]
+		goals = [np.array([[1., 1.8]]), np.array([[1., 1.6]]), np.array([[1., 1.4]]), np.array([[1., 1.2]]), np.array([[1., 1.]]), np.array([[1., 0.8]]), np.array([[1., 0.6]]), np.array([[1., 0.4]]), np.array([[1., 0.2]])]
+		plot_goals = [np.array([[1., 1.8]]), np.array([[1., 1.6]]), np.array([[1., 1.4]]), np.array([[1., 1.2]]), np.array([[1., 0.8]]), np.array([[1., 0.6]]), np.array([[1., 0.4]]), np.array([[1., 0.2]])]
 
 		convert_table = np.eye(len(skill_sequence))
 
-		for skill_indx in skill_indices:
+		skill_indx = 0
+		final_skill_indx = 1
+		frame_skip = 4
+
+		fig = plt.figure()
+		ax  = fig.add_axes([0.1, 0.1, 0.7, 0.85]) # [left, bottom, width, height]
+		axc = fig.add_axes([0.85, 0.10, 0.05, 0.85])
+		eval_env.plot(ax)
+
+		circles = []
+		for i in range(0,len(skill_sequence)):
+			skl = skill_sequence[i]
+			st, _, dg = skl
+			obs, full_st = st
+			circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
+			circles.append(circle)
+		coll = mc.PatchCollection(circles, color="crimson", alpha = 0.5, zorder = 1)
+		ax.add_collection(coll)
+
+		circles_r = []
+		for goal in plot_goals:
+			circle_r = plt.Circle((goal[0][0], goal[0][1]), 0.05, color='crimson', alpha = 0.6)
+			circles_r.append(circle_r)
+		coll_r = mc.PatchCollection(circles_r, color="gray", alpha = 0.5, zorder = 1)
+		ax.add_collection(coll_r)
+
+		values = []
+		states = []
+
+		## starting states
+		for goal_indx, desired_goal in enumerate(goals):
 
 			obs = eval_env.reset()
 
-			skill = skill_sequence[skill_indx]
-			starting_state, _, desired_goal = skill
-			observation, full_state = starting_state
+			A = np.array([[0.2,1.]])
+			B = desired_goal.copy()
+			theta = np.arctan2(desired_goal[0][1]-A[0][1],desired_goal[0][0]-A[0][0])
 
-			next_skill = skill_sequence[skill_indx+1]
-			_, _, next_desired_goal = skill
+			obs["observation"][0][:] = np.array([A[0][0],A[0][1],theta])
+			obs["achieved_goal"][0][:] = np.array([A[0][0],A[0][1]])
+			obs["desired_goal"][0][:] = desired_goal[0][:2]
+			obs["skill_indx"] = np.array([convert_table[skill_indx]])
 
+			if hasattr(env, "obs_rms"):
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+													obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+										   obs["skill_indx"])), action)
+			else:
+				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
 
-			min_x = (desired_goal[0][0] - 2.)
-			max_x = (desired_goal[0][0] + 2.)
-			min_y = (desired_goal[0][1] - 2.)
-			max_y = (desired_goal[0][1] + 2.)
-			s_x = np.linspace(min_x, max_x, 50)
-			s_y = np.linspace(min_y, max_y, 50)
+			values.append(value[0])
+			states.append(obs["observation"].copy())
 
-			states_x, states_y = np.meshgrid(s_x, s_y)
-			orientations = np.linspace(-np.pi/2, np.pi/2, 20)
+		## intermediate states
+		for goal_indx, desired_goal in enumerate(goals):
 
-			values = []
-			for x, y in zip(states_x.flatten(), states_y.flatten()):
-				or_values = []
-				for theta in list(orientations):
-					obs["observation"][0][:] = np.array([x,y,theta])
-					obs["achieved_goal"][0][:] = np.array([x,y])
-					obs["desired_goal"][0][:] = desired_goal[0][:2]
-					obs["skill_indx"] = np.array([convert_table[skill_indx]])
+			obs = eval_env.reset()
 
-					if hasattr(env, "obs_rms"):
-						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-															obs["skill_indx"])),
-							deterministic=True,
-						)
-						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-												   obs["skill_indx"])), action)
-					else:
-						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
-							deterministic=True,
-						)
-						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
-					or_values.append(value[0])
+			A = np.array([[0.2,1.]])
+			B = desired_goal.copy() - np.array([[4*0.1*0.5, 0.]])
+			theta = np.arctan2(B[0][1]-A[0][1],B[0][0]-A[0][0])
 
-				values.append(max(or_values))
+			for n_frame_skip in range(4,16,4):
+				print("n_frame_skip = ", n_frame_skip)
+				obs["observation"][0][:] = np.array([A[0][0] + n_frame_skip*0.1*0.5*np.cos(theta) ,A[0][1]+ n_frame_skip*0.1*0.5*np.sin(theta),theta])
+				obs["achieved_goal"][0][:] = np.array([A[0][0] + n_frame_skip*0.1*0.5*np.cos(theta), A[0][1] + n_frame_skip*0.1*0.5*np.sin(theta)])
+				obs["desired_goal"][0][:] = desired_goal[0][:2]
+				obs["skill_indx"] = np.array([convert_table[skill_indx]])
 
-			# print(states_x.flatten().shape)
-			# print(states_y.flatten().shape)
-			# print(len(values))
+				if hasattr(env, "obs_rms"):
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+														obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+											   obs["skill_indx"])), action)
+				else:
+					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
 
-			fig, ax = plt.subplots()
-			cb = plt.contourf(states_x, states_y, np.array(values).reshape(states_x.shape), levels=30)
-			fig.colorbar(cb)
-			eval_env.plot(ax)
-			ax.scatter(desired_goal[0][0],desired_goal[0][1])
+				values.append(value[0])
+				states.append(obs["observation"].copy())
 
-			circles = []
-			for i in range(0,len(skill_sequence)):
-				skl = skill_sequence[i]
-				st, _, dg = skl
-				obs, full_st = st
-				circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
-				circles.append(circle)
+		## intermediate states
+		for goal_indx, desired_goal in enumerate(goals):
 
-				x = obs[0][0]
-				y = obs[0][1]
-				dx = np.cos(obs[0][2])
-				dy = np.sin(obs[0][2])
-				arrow = plt.arrow(x,y,dx*0.3,dy*0.3,alpha = 0.2,width = 0.04, color="m", zorder=6)
-				ax.add_patch(arrow)
+			obs = eval_env.reset()
 
-			coll = mc.PatchCollection(circles, color="plum", alpha = 0.5, zorder = 4)
-			ax.add_collection(coll)
+			A = np.array([[0.2,1.]])
+			B = desired_goal.copy()
+			# theta = np.arctan2(desired_goal[0][1]-A[0][1],desired_goal[0][0]-A[0][0])
+			theta = 0.
 
-			plt.savefig(save_dir + "/visu_value_landscape_" + str(skill_indx) + "_it_" + str(it) + ".png")
-			plt.close(fig)
+			obs["observation"][0][:] = np.array([B[0][0] - frame_skip*0.1*0.5*np.cos(theta) ,B[0][1]- frame_skip*0.1*0.5*np.sin(theta),theta])
+			obs["achieved_goal"][0][:] = np.array([B[0][0] - frame_skip*0.1*0.5*np.cos(theta), B[0][1] - frame_skip*0.1*0.5*np.sin(theta)])
+			obs["desired_goal"][0][:] = desired_goal[0][:2]
+			obs["skill_indx"] = np.array([convert_table[skill_indx]])
+
+			if hasattr(env, "obs_rms"):
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+													obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+										   obs["skill_indx"])), action)
+			else:
+				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+
+			values.append(value[0])
+			states.append(obs["observation"].copy())
+
+		## final states
+		for goal_indx, desired_goal in enumerate(goals):
+
+			obs = eval_env.reset()
+
+			A = desired_goal.copy()
+			B = np.array([[1.8,1.]])
+			theta = np.arctan2(B[0][1]-A[0][1],B[0][0]-A[0][0])
+
+			obs["observation"][0][:] = np.array([B[0][0] - 2*frame_skip*0.1*0.5*np.cos(theta) ,B[0][1]- 2*frame_skip*0.1*0.5*np.sin(theta),theta])
+			obs["achieved_goal"][0][:] = np.array([B[0][0] - 2*frame_skip*0.1*0.5*np.cos(theta), B[0][1] - 2*frame_skip*0.1*0.5*np.sin(theta)])
+			obs["desired_goal"][0][:] = np.array([[1.8,1.]])
+			obs["skill_indx"] = np.array([convert_table[final_skill_indx]])
+
+			if hasattr(env, "obs_rms"):
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+													obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+										   obs["skill_indx"])), action)
+			else:
+				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+
+			values.append(value[0])
+			states.append(obs["observation"].copy())
+
+		cmap = plt.cm.plasma
+		# cNorm  = colors.Normalize(vmin=min(values), vmax=max(values))
+		cNorm  = colors.Normalize(vmin=0., vmax=2.)
+		scalarMap = cmx.ScalarMappable(norm=cNorm,cmap=cmap)
+
+		for state, value in zip(states, values):
+
+			dx = np.cos(state[0][2])
+			dy = np.sin(state[0][2])
+			# print("desired_goal[0][0] = ", desired_goal[0][0])
+			# print("desired_goal[0][1] = ", desired_goal[0][1])
+			# print("dx = ", dx)
+			# print("dy = ", dy)
+			# print("value = ", value)
+			colorVal = scalarMap.to_rgba(value)
+			print("colorVal = ", colorVal)
+			ax.arrow(state[0][0],state[0][1],dx*0.075,dy*0.075,alpha = 0.8,width = 0.015, color=colorVal, zorder=2)
+
+		cb = mpl.colorbar.ColorbarBase(axc, cmap=cmap,
+                                norm=cNorm,orientation='vertical')
+
+		plt.savefig(save_dir + "/visu_value_landscape_" + str(goal_indx) + "_it_" + str(it) + ".png")
+		plt.close(fig)
+
+		with open(save_dir + '/values_landscape_goal_' + str(goal_indx) + "_it_" + str(it) + '.npy', 'wb') as f:
+			np.save(f, np.array(values))
 
 		return
 
@@ -372,8 +574,8 @@ if (__name__=='__main__'):
 
 	# s_extractor = skills_extractor(parsed_args.demo_path, eval_env)
 
-	skills_sequence = [((np.array([[0.2, 1., 0.]]), np.array([[0.2, 1., 0.]])), 15, np.array([[1., 1.8, 0.]])),
-	 					((np.array([[1., 1.8, 0.]]), np.array([[1., 1.8, 0.]])), 15, np.array([[1.8, 1., 0.]]))]
+	skills_sequence = [((np.array([[0.2, 1., 0.]]), np.array([[0.2, 1., 0.]])), 25, np.array([[1., 1., 0.]])),
+	 					((np.array([[1., 1., 0.]]), np.array([[1., 1., 0.]])), 25, np.array([[1.8, 1., 0.]]))]
 
 	num_skills = len(skills_sequence)
 
@@ -389,9 +591,9 @@ if (__name__=='__main__'):
 
 	batch_size = 256
 	gd_steps_per_step = 1.5
-	start_training_after_x_steps = 100 * 20
+	start_training_after_x_steps = 5000
 	print("start_training_after_x_steps = ", start_training_after_x_steps)
-	max_steps = 50_000
+	max_steps = 25_000
 	evaluate_every_x_steps = 1000
 	save_agent_every_x_steps = 100_000
 
@@ -418,7 +620,7 @@ if (__name__=='__main__'):
 			"actor_lr": 0.001,
 			"backup_entropy": False,
 			"critic_lr": 0.001,
-			"discount": 0.9,
+			"discount": 0.99,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
 			"init_temperature": 0.001,
@@ -465,6 +667,9 @@ if (__name__=='__main__'):
 			# )
 			traj_eval, max_zone = eval_traj(env, eval_env, agent, eval_goalsetter)
 			trajs_eval_relabelling = eval_relabelling(env, eval_env, agent, eval_goalsetter)
+
+			with open(save_dir + "/traj_eval_it_" + str(i) + '.npy', 'wb') as f:
+				np.save(f, np.array(traj_eval))
 
 			plot_traj(trajs, traj_eval, skills_sequence, save_dir, it=i)
 			plot_trajs_relabelling(trajs_eval_relabelling, save_dir, it=i)
