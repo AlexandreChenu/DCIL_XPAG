@@ -322,10 +322,10 @@ if (__name__=='__main__'):
 		"backup_entropy": False,
 		"value_clipping": bool(parsed_args.value_clipping),
 		"critic_lr": 0.0003,
-		"discount": 0.98,
+		"discount": 0.99,
 		"hidden_dims": (512, 512, 512),
 		# "hidden_dims": (400,300),
-		"init_temperature": 0.001,
+                "init_temperature": 0.0003,
 		"target_entropy": None,
 		"target_update_period": 1,
 		"tau": 0.005,
@@ -396,7 +396,7 @@ if (__name__=='__main__'):
 			f_total_eval_reward.write(str(total_env_reward) + "\n")
 
 			# print("traj_eval = ", traj_eval)
-			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+			#plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("| values = ", values)
 			for value in values:
@@ -505,8 +505,8 @@ if (__name__=='__main__'):
 		# print("step = ", step)
 		# print("info = ", info)
 
-		print("achieved_goal = ", observation["achieved_goal"])
-		print("desired_goal = ", observation["desired_goal"])
+		#print("achieved_goal = ", observation["achieved_goal"])
+		#print("desired_goal = ", observation["desired_goal"])
 
 		if env_info["is_goalenv"]:
 			step["done_from_env"] = info["done_from_env"]
@@ -536,7 +536,7 @@ if (__name__=='__main__'):
 
 		t1_reset_time = time.time()
 		if done.max():
-			print("\n")
+			#print("\n")
 			traj.append(observation["observation"].copy())
 
 			curr_indx = info["skill_indx"][0][0]

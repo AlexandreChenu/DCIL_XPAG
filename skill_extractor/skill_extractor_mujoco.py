@@ -13,7 +13,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 import gym
-import gym_gfetch
+#import gym_gfetch
 
 class skills_extractor_Mj():
 	def __init__(self, demo_path, env, eps_state=0.5, beta=1.25):

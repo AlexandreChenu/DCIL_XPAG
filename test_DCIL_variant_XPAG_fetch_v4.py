@@ -184,7 +184,7 @@ if (__name__=='__main__'):
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
 	num_envs = 1  # the number of rollouts in parallel during training
-	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs, do_normalize=False)
+	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs, do_normalize=True)
 	print("env = ", env)
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=1., beta=2.)
@@ -225,12 +225,12 @@ if (__name__=='__main__'):
 	plot_projection = None
 
 	params = {
-		"actor_lr": 0.001,
+		"actor_lr": 0.0001,
 		"backup_entropy": False,
-		"critic_lr": 0.001,
+		"critic_lr": 0.0001,
 		"discount": 0.98,
-		# "hidden_dims": (512, 512, 512),
-		"hidden_dims": (400,300),
+		"hidden_dims": (512, 512, 512),
+		#"hidden_dims": (400,300),
 		"init_temperature": 0.0001,
 		"target_entropy": None,
 		"target_update_period": 1,
@@ -310,8 +310,8 @@ if (__name__=='__main__'):
 				print("ratio = ", float(num_success/num_rollouts))
 				# print("num_success_skill = ", num_success_skill)
 				# print("num_rollouts_skill = ", num_rollouts_skill)
-				np.savetxt(save_dir + "/success_skill_" + str(i) + ".txt", num_success_skill)
-				np.savetxt(save_dir + "/rollout_skill_" + str(i) + ".txt", num_rollouts_skill)
+				#np.savetxt(save_dir + "/success_skill_" + str(i) + ".txt", num_success_skill)
+				#np.savetxt(save_dir + "/rollout_skill_" + str(i) + ".txt", num_rollouts_skill)
 				f_ratio.write(str(float(num_success/num_rollouts)) + "\n")
 				num_success = 0
 				num_rollouts = 0
