@@ -176,10 +176,11 @@ def save_frames_as_video(frames, path, iteration):
 
 	return
 
-def save_sim_traj(sim_traj, path, iteration):
+def save_sim_traj(sim_traj, eval_env, path, iteration):
 
-	with open(path + "/sim_traj_" + str(iteration) + ".pickle", 'wb') as handle:
-		pickle.dump(sim_traj, handle, protocol=pickle.HIGHEST_PROTOCOL)
+	for s_i, sim_state in enumerate(sim_traj):
+		eval_env.envs[0].env.env.env.unwrapped._internal_env._humanoid._pybullet_client.restoreState(sim_state)
+		eval_env.envs[0].env.env.env.unwrapped._internal_env._humanoid._pybullet_client.saveBullet(path + "/eval_sim_state_" + str(s_i) + ".bullet")
 
 	return
 
@@ -193,6 +194,7 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 	sim_states = []
 
 	sum_env_reward = 0
+	last_skill = goalsetter.curr_indx.copy()
 
 	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 	while traj_length < demo_length and not eval_done:
@@ -215,23 +217,16 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 				deterministic=True,
 				)
 
-			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
-			# print("eval_env.envs = ", id(eval_env.envs))
-			# print("eval_env = ", id(eval_env))
-			# print("eval_env.env = ", id(eval_env.env))
-			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
-			# print("eval_env.env.envs = ", id(eval_env.env.envs))
-
 			## TODO
 			# if save_video:
 			# 	frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
 			# 	# print("frame = ", frame)
 			# 	frames.append(frame)
 			#
-			# if save_sim_traj:
-			# 	sim_state = eval_env.envs[0].env.get_inner_state()
-			# 	# print("sim_state = ", sim_state)
-			# 	sim_states.append(sim_state)
+			if save_sim_traj:
+				sim_state = eval_env.envs[0].env.env.env.unwrapped._internal_env._humanoid._pybullet_client.saveState()
+				# print("sim_state = ", sim_state)
+				sim_states.append(sim_state)
 
 			# print("action = ", action.shape)
 			observation, _, done, info = goalsetter.step(
@@ -245,9 +240,13 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 			# print("observation.shape = ", observation["observation"].shape)
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
+
 			if done.max():
 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
+				if info["is_success"].max():
+					last_skill = goalsetter.curr_indx.copy()
 				break
+
 			if traj_length >= demo_length:
 				next_skill_avail = False
 				break
@@ -255,7 +254,7 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 		if not next_skill_avail:
 			eval_done = True
 
-	return traj, frames, sim_states, sum_env_reward
+	return traj, frames, sim_states, sum_env_reward, last_skill
 
 
 if (__name__=='__main__'):
@@ -315,7 +314,8 @@ if (__name__=='__main__'):
 	save_episode = True
 	plot_projection = None
 	do_save_video = False
-	do_save_sim_traj = False
+	do_save_sim_traj = True
+	max_eval_skill = 0
 
 	params = {
 		"actor_lr": 0.0003,
@@ -385,11 +385,17 @@ if (__name__=='__main__'):
 			# 	plot_projection=plot_projection,
 			# 	save_episode=save_episode,
 			# )
-			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
-			if do_save_video:
-				save_frames_as_video(frames, save_dir, i)
+			traj_eval, frames, sim_traj, total_env_reward, last_skill = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+			# if do_save_video:
+			# 	save_frames_as_video(frames, save_dir, i)
 			if do_save_sim_traj:
-				save_sim_traj(sim_traj, save_dir, i)
+				print("last skill = ", last_skill.max())
+				print("max_eval_skill = ", max_eval_skill)
+				if last_skill.max() > max_eval_skill:
+					print("last skill = ", last_skill.max())
+					print("max_eval_skill = ", max_eval_skill)
+					save_sim_traj(sim_traj, eval_env, save_dir, i)
+					max_eval_skill = last_skill.max()
 
 			print("| cumulative env reward = ", total_env_reward)
 
