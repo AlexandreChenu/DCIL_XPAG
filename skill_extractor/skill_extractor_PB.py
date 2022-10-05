@@ -11,6 +11,7 @@ import torch
 import pickle
 
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 
 import gym
 
@@ -29,7 +30,8 @@ class skills_extractor_PB():
 		# self.L_observations = self.L_observations[:200]
 		# self.L_inner_states_env = self.L_inner_states_env[:200]
 		# self.L_inner_states_eval_env = self.L_inner_states_eval_env[:200]
-		#
+		# self.test_visu_orientation()
+
 		self.demo_length = len(self.L_observations)
 		print("self.demo_length = ", self.demo_length)
 		#
@@ -42,7 +44,6 @@ class skills_extractor_PB():
 		self.skills_sequence_env, self.skills_sequence_eval_env = self.get_skills(self.L_observations, self.L_inner_states_env, self.L_inner_states_eval_env)
 		assert len(self.skills_sequence_env) == len(self.skills_sequence_eval_env)
 
-		# self.test_visu()
 		print("nb_skills = ", len(self.skills_sequence_env))
 		# print("demo_length = ", self.demo_length)
 
@@ -80,6 +81,35 @@ class skills_extractor_PB():
 		plt.show()
 		return
 
+	def test_visu_orientation(self):
+		fig = plt.figure()
+		ax = fig.add_subplot(projection='3d')
+		# self.env.plot(ax)
+		X = [obs[0] for obs in self.L_observations]
+		Y = [obs[2] for obs in self.L_observations]
+		Z = [obs[1] for obs in self.L_observations]
+
+		X_init = self.L_observations[0][0]
+		Y_init = self.L_observations[0][2]
+		Z_init = self.L_observations[0][1]
+
+		ax.plot(X,Y,Z)
+		ax.scatter(X_init, Y_init, Z_init,c="red")
+
+		for i_obs, obs in enumerate(self.L_observations):
+			if i_obs%3==0:
+				q_x,q_y,q_z,q_w = obs[3],obs[4],obs[5],obs[6]
+				rot = Rotation.from_quat(np.array([q_x,q_y,q_z,q_w]))
+				rot_euler = rot.as_euler('xyz')
+				yaw = rot_euler[2]
+				new_x = obs[0] + np.sin(yaw)
+				new_y = obs[2] + np.cos(yaw)
+				new_z = obs[1] + 0.
+				ax.quiver(obs[0], obs[2], obs[1], 0.01*new_x, 0.01*new_y, new_z, color='b')
+
+		plt.show()
+		return
+
 	def get_demo(self, demo_path, verbose=0):
 		"""
 		Extract demo from pickled file
@@ -94,8 +124,8 @@ class skills_extractor_PB():
 
 		print("L_demo_states = ", L_demo_states)
 
-		# for i in range(1,len(L_demo_states)):
-		for i in range(1,400):
+		for i in range(1,len(L_demo_states)):
+		# for i in range(1,400):
 			state_file_path = [demo_path + "state" + str(i) + ".bullet"]
 			# print("state_file_path = ", state_file_path)
 			self.env.set_inner_state(state_file_path)
