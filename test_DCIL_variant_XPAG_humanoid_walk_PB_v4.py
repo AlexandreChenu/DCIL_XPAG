@@ -291,7 +291,7 @@ if (__name__=='__main__'):
 	# print(goalsetter.skills_max_episode_steps)
 	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
 
-	batch_size = 64
+	batch_size = 128
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
 	max_steps = 2_000_000
@@ -325,7 +325,7 @@ if (__name__=='__main__'):
 		"discount": 0.99,
 		"hidden_dims": (512, 512, 512),
 		# "hidden_dims": (400,300),
-                "init_temperature": 0.0003,
+                "init_temperature": 0.001,
 		"target_entropy": None,
 		"target_update_period": 1,
 		"tau": 0.005,
