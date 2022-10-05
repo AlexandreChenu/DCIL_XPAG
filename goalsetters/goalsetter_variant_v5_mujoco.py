@@ -69,8 +69,8 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		for k in range(self.curr_indx.shape[0]):
 			## update q_ref if success and q_a > q_ref
 			if info["is_success"][k]:
-				if self.q_a[-2][k] > self.q_ref[self.curr_indx[k]]:
-					self.q_ref[self.curr_indx[k]] = self.q_a[-2][k].copy()
+				if self.q_a[-1][k] > self.q_ref[self.curr_indx[k]]:
+					self.q_ref[self.curr_indx[k]] = self.q_a[-1][k].copy()
 
 		self.last_info = info.copy()
 		self.last_done = done.copy()

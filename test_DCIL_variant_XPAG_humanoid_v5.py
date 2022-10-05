@@ -183,78 +183,78 @@ def save_sim_traj(sim_traj, path, iteration):
 
 	return
 
-def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
-	traj = []
-	traj_length = 0
-	observation = goalsetter.reset(eval_env, eval_env.reset())
-	eval_done = False
-
-	frames = []
-	sim_states = []
-
-	sum_env_reward = 0
-
-	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
-	while traj_length < demo_length and not eval_done:
-		# skill_success = False
-		# print("curr_indx = ", goalsetter.curr_indx)
-		max_steps = eval_env.get_max_episode_steps()
-		# print("max_steps = ", max_steps)
-		for i_step in range(0,int(max_steps[0])):
-			traj_length += 1
-			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
-			traj.append(observation["observation"].copy())
-			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-													observation["oh_skill_indx"])),
-					deterministic=True,
-				)
-			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-				deterministic=True,
-				)
-
-			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
-			# print("eval_env.envs = ", id(eval_env.envs))
-			# print("eval_env = ", id(eval_env))
-			# print("eval_env.env = ", id(eval_env.env))
-			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
-			# print("eval_env.env.envs = ", id(eval_env.env.envs))
-
-			if save_video:
-				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
-				# print("frame = ", frame)
-				frames.append(frame)
-
-			if save_sim_traj:
-				sim_state = eval_env.envs[0].env.get_inner_state()
-				# print("sim_state = ", sim_state)
-				sim_states.append(sim_state)
-
-			# print("action = ", action)
-			observation, _, done, info = goalsetter.step(
-				eval_env, observation, action, *eval_env.step(action)
-			)
-
-			sum_env_reward += info["reward_from_env"][0]
-
-
-			# print("observation eval = ", observation["observation"][0][:15])
-			# print("observation.shape = ", observation["observation"].shape)
-			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
-			# print("done = ", done)
-			if done.max():
-				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
-				break
-			if traj_length >= demo_length:
-				next_skill_avail = False
-				break
-
-		if not next_skill_avail:
-			eval_done = True
-
-	return traj, frames, sim_states, sum_env_reward
+# def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
+# 	traj = []
+# 	traj_length = 0
+# 	observation = goalsetter.reset(eval_env, eval_env.reset())
+# 	eval_done = False
+#
+# 	frames = []
+# 	sim_states = []
+#
+# 	sum_env_reward = 0
+#
+# 	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
+# 	while traj_length < demo_length and not eval_done:
+# 		# skill_success = False
+# 		# print("curr_indx = ", goalsetter.curr_indx)
+# 		max_steps = eval_env.get_max_episode_steps()
+# 		# print("max_steps = ", max_steps)
+# 		for i_step in range(0,int(max_steps[0])):
+# 			traj_length += 1
+# 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
+# 			traj.append(observation["observation"].copy())
+# 			if hasattr(env, "obs_rms"):
+# 				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+# 													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
+# 													observation["oh_skill_indx"])),
+# 					deterministic=True,
+# 				)
+# 			else:
+# 				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+# 				deterministic=True,
+# 				)
+#
+# 			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
+# 			# print("eval_env.envs = ", id(eval_env.envs))
+# 			# print("eval_env = ", id(eval_env))
+# 			# print("eval_env.env = ", id(eval_env.env))
+# 			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
+# 			# print("eval_env.env.envs = ", id(eval_env.env.envs))
+#
+# 			if save_video:
+# 				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
+# 				# print("frame = ", frame)
+# 				frames.append(frame)
+#
+# 			if save_sim_traj:
+# 				sim_state = eval_env.envs[0].env.get_inner_state()
+# 				# print("sim_state = ", sim_state)
+# 				sim_states.append(sim_state)
+#
+# 			# print("action = ", action)
+# 			observation, _, done, info = goalsetter.step(
+# 				eval_env, observation, action, *eval_env.step(action)
+# 			)
+#
+# 			sum_env_reward += info["reward_from_env"][0]
+#
+#
+# 			# print("observation eval = ", observation["observation"][0][:15])
+# 			# print("observation.shape = ", observation["observation"].shape)
+# 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
+# 			# print("done = ", done)
+# 			if done.max():
+# 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
+# 				break
+# 			if traj_length >= demo_length:
+# 				next_skill_avail = False
+# 				break
+#
+# 		if not next_skill_avail:
+# 			eval_done = True
+#
+# 	return traj, frames, sim_states, sum_env_reward
 
 def eval_traj(env, eval_env, agent, demo_length, goalsetter, eval_goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
