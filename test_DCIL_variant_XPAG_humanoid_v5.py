@@ -324,10 +324,9 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, eval_goalsetter, sa
 			# print("observation.shape = ", observation["observation"].shape)
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
-                        if q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
-			#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
-                                observation, next_skill_avail = eval_goalsetter.shift_skill(eval_env)
-                                break
+			if q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
+				observation, next_skill_avail = eval_goalsetter.shift_skill(eval_env)
+				break
 			#
 			# if done.max():
 			# 	observation, next_skill_avail = goalsetter.shift_skill(eval_env)
@@ -592,8 +591,8 @@ if (__name__=='__main__'):
 			"next_observation": next_observation,
 		}
 
-                if i % 100000 == 0: ## reinitialize q_ref to get rid of value overestimation
-                        goalsetter.q_ref = np.ones(len(goalsetter.skills_sequence)) 
+		if i % 100000 == 0: ## reinitialize q_ref to get rid of value overestimation
+			goalsetter.q_ref = np.ones(len(goalsetter.skills_sequence))
 		# print("info = ", info)
 
 		if env_info["is_goalenv"]:
