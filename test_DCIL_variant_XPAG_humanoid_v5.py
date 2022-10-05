@@ -418,6 +418,7 @@ if (__name__=='__main__'):
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
 	f_values = open(save_dir + "/value_start_states.txt", "w")
 	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
+	f_q_ref = open(save_dir + "/q_value_reference.txt", "w")
 
 	with open(save_dir + "/sac_params.txt", "w") as f:
 		print(params, file=f)
@@ -489,6 +490,11 @@ if (__name__=='__main__'):
 			for value in values:
 				f_values.write(str(value) + " ")
 			f_values.write("\n")
+
+			for q in goalsetter.q_ref:
+				f_q_ref.write(str(q) + " ")
+			f_q_ref.write("\n")
+			f_q_ref.flush()
 
 			# t2_logs = time.time()
 			# print("logs time = ", t2_logs - t1_logs)
