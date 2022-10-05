@@ -26,9 +26,9 @@ class skills_extractor_Mj():
 		self.beta = beta
 
 		self.L_observations, self.L_sim_states = self.get_demo(demo_path)
-
-		self.L_observations = self.L_observations[:150]
-		self.L_sim_states = self.L_sim_states[:150]
+                ## limit number of skills
+		self.L_observations = self.L_observations[100:]
+		self.L_sim_states = self.L_sim_states[100:] 
 
 		self.demo_length = len(self.L_observations)
 
@@ -111,8 +111,8 @@ class skills_extractor_Mj():
 			k = 0
 			sum_dist = 0
 
-			# cumulative distance
-			while sum_dist <= self.eps_state and i + k < len(L_observations) - 1:
+			# cumulative distance ( + minimum skill length of 15 control steps)
+			while (sum_dist <= self.eps_state or k < 10) and i + k < len(L_observations) - 1:
 				self.env.set_state([L_sim_states[i+k]], np.ones((1,)))
 				shifted_state = self.env.state_vector()
 				# print("shifted_state = ", shifted_state)

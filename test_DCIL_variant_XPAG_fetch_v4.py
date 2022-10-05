@@ -187,7 +187,7 @@ if (__name__=='__main__'):
 	env, eval_env, env_info = gym_vec_env('GFetchGoal-v0', num_envs, do_normalize=True)
 	print("env = ", env)
 
-	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=1., beta=2.)
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=0.5, beta=2.)
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	num_skills = len(s_extractor.skills_sequence)
@@ -204,7 +204,7 @@ if (__name__=='__main__'):
 
 	batch_size = 256
 	gd_steps_per_step = 1.5
-	start_training_after_x_steps = env_info['max_episode_steps'] * 50
+	start_training_after_x_steps = 10000
 	max_steps = 500_000
 	evaluate_every_x_steps = 2_000
 	save_agent_every_x_steps = 50_000
@@ -291,7 +291,7 @@ if (__name__=='__main__'):
 			traj_eval, nb_skills_success = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
 			f_nb_skills_success.write(str(nb_skills_success) + "\n")
-			plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
+			#plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 

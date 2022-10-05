@@ -94,7 +94,7 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 
 	visu_success_zones(eval_env, skill_sequence, ax)
 
-	for _azim in range(45, 360, 90):
+	for _azim in range(45, 46):
 		ax.view_init(azim=_azim)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
@@ -295,8 +295,8 @@ if (__name__=='__main__'):
 	batch_size = 64
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 2_000_000
-	evaluate_every_x_steps = 2_000
+	max_steps = 4_000_000
+	evaluate_every_x_steps = 4_000
 	save_agent_every_x_steps = 50_000
 
 	## create log dir
@@ -315,7 +315,7 @@ if (__name__=='__main__'):
 	save_episode = True
 	plot_projection = None
 	do_save_video = False
-	do_save_sim_traj = False
+	do_save_sim_traj = True
 
 	params = {
 		"actor_lr": 0.0003,
@@ -396,7 +396,7 @@ if (__name__=='__main__'):
 			f_total_eval_reward.write(str(total_env_reward) + "\n")
 
 			# print("traj_eval = ", traj_eval)
-			#plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("| values = ", values)
 			for value in values:
