@@ -235,11 +235,34 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 #
 # 		return
 
+def plot_car(state, ax, alpha , truckcolor="-k"):  # pragma: no cover
+        x = state[0] #self.pose[0]
+        y = state[1] #self.pose[1]
+        yaw = state[2] #self.pose[2]
+
+        length = 0.2  # [m]
+        width = 0.1  # [m]
+        backtowheel = 0.05  # [m]
+        wb = 0.45  # [m]
+
+        outline = np.array([[-backtowheel, (length - backtowheel), (length - backtowheel), -backtowheel, -backtowheel],
+        					[width / 2, width / 2, - width / 2, -width / 2, width / 2]])
+        Rot1 = np.array([[np.cos(yaw), np.sin(yaw)],
+        				 [-np.sin(yaw), np.cos(yaw)]])
+        outline = (outline.T.dot(Rot1)).T
+
+        outline[0, :] += x
+        outline[1, :] += y
+
+        ax.plot(np.array(outline[0, :]).flatten(),
+        		 np.array(outline[1, :]).flatten(), color=truckcolor, alpha = alpha, linewidth=3.5, zorder=2)
+
+
 def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
-		goals = [np.array([[1., 1.8]]), np.array([[1., 1.6]]), np.array([[1., 1.4]]), np.array([[1., 1.2]]), np.array([[1., 1.]]), np.array([[1., 0.8]]), np.array([[1., 0.6]]), np.array([[1., 0.4]]), np.array([[1., 0.2]])]
-		plot_goals = [np.array([[1., 1.8]]), np.array([[1., 1.6]]), np.array([[1., 1.4]]), np.array([[1., 1.2]]), np.array([[1., 0.8]]), np.array([[1., 0.6]]), np.array([[1., 0.4]]), np.array([[1., 0.2]])]
-
+		goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]]), np.array([[1., 0.2]])]
+		plot_goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]]), np.array([[1., 0.2]])]
+		goals_colors = ["m", "blue", "crimson",  "violet", "orange"]
 		convert_table = np.eye(len(skill_sequence))
 
 		skill_indx = 0
@@ -256,55 +279,27 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			skl = skill_sequence[i]
 			st, _, dg = skl
 			obs, full_st = st
-			circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
+			circle = plt.Circle((dg[0][0], dg[0][1]), 0.05, color='m', alpha = 0.6)
 			circles.append(circle)
-		coll = mc.PatchCollection(circles, color="crimson", alpha = 0.5, zorder = 1)
+		coll = mc.PatchCollection(circles, color="crimson", alpha = 1., zorder = 1)
 		ax.add_collection(coll)
 
-		circles_r = []
-		for goal in plot_goals:
-			circle_r = plt.Circle((goal[0][0], goal[0][1]), 0.05, color='crimson', alpha = 0.6)
+		ax.scatter(0.25,1.,c="black")
+
+
+		for goal, goal_color in zip(plot_goals, goals_colors):
+			circles_r = []
+			circle_r = plt.Circle((goal[0][0], goal[0][1]), 0.05, alpha = 0.6)
 			circles_r.append(circle_r)
-		coll_r = mc.PatchCollection(circles_r, color="gray", alpha = 0.5, zorder = 1)
-		ax.add_collection(coll_r)
+			coll_r = mc.PatchCollection(circles_r, color=goal_color, alpha = 0.5, zorder = 1)
+			ax.add_collection(coll_r)
 
 		values = []
 		states = []
 
-		## starting states
-		for goal_indx, desired_goal in enumerate(goals):
-
-			obs = eval_env.reset()
-
-			A = np.array([[0.2,1.]])
-			B = desired_goal.copy()
-			theta = np.arctan2(desired_goal[0][1]-A[0][1],desired_goal[0][0]-A[0][0])
-
-			obs["observation"][0][:] = np.array([A[0][0],A[0][1],theta])
-			obs["achieved_goal"][0][:] = np.array([A[0][0],A[0][1]])
-			obs["desired_goal"][0][:] = desired_goal[0][:2]
-			obs["skill_indx"] = np.array([convert_table[skill_indx]])
-
-			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-													obs["skill_indx"])),
-					deterministic=True,
-				)
-				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-										   obs["skill_indx"])), action)
-			else:
-				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
-					deterministic=True,
-				)
-				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
-
-			values.append(value[0])
-			states.append(obs["observation"].copy())
 
 		## intermediate states
-		for goal_indx, desired_goal in enumerate(goals):
+		for goal_indx, desired_goal in enumerate(goals[1:-1]):
 
 			obs = eval_env.reset()
 
@@ -312,7 +307,7 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			B = desired_goal.copy() - np.array([[4*0.1*0.5, 0.]])
 			theta = np.arctan2(B[0][1]-A[0][1],B[0][0]-A[0][0])
 
-			for n_frame_skip in range(4,16,4):
+			for n_frame_skip in range(6,7):
 				print("n_frame_skip = ", n_frame_skip)
 				obs["observation"][0][:] = np.array([A[0][0] + n_frame_skip*0.1*0.5*np.cos(theta) ,A[0][1]+ n_frame_skip*0.1*0.5*np.sin(theta),theta])
 				obs["achieved_goal"][0][:] = np.array([A[0][0] + n_frame_skip*0.1*0.5*np.cos(theta), A[0][1] + n_frame_skip*0.1*0.5*np.sin(theta)])
@@ -342,9 +337,7 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 			obs = eval_env.reset()
 
-			A = np.array([[0.2,1.]])
 			B = desired_goal.copy()
-			# theta = np.arctan2(desired_goal[0][1]-A[0][1],desired_goal[0][0]-A[0][0])
 			theta = 0.
 
 			obs["observation"][0][:] = np.array([B[0][0] - frame_skip*0.1*0.5*np.cos(theta) ,B[0][1]- frame_skip*0.1*0.5*np.sin(theta),theta])
@@ -402,23 +395,17 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			values.append(value[0])
 			states.append(obs["observation"].copy())
 
-		cmap = plt.cm.plasma
+		cmap = plt.cm.coolwarm
 		# cNorm  = colors.Normalize(vmin=min(values), vmax=max(values))
-		cNorm  = colors.Normalize(vmin=0., vmax=2.)
+		cNorm  = colors.Normalize(vmin=1., vmax=2.)
 		scalarMap = cmx.ScalarMappable(norm=cNorm,cmap=cmap)
 
 		for state, value in zip(states, values):
 
-			dx = np.cos(state[0][2])
-			dy = np.sin(state[0][2])
-			# print("desired_goal[0][0] = ", desired_goal[0][0])
-			# print("desired_goal[0][1] = ", desired_goal[0][1])
-			# print("dx = ", dx)
-			# print("dy = ", dy)
-			# print("value = ", value)
 			colorVal = scalarMap.to_rgba(value)
-			print("colorVal = ", colorVal)
-			ax.arrow(state[0][0],state[0][1],dx*0.075,dy*0.075,alpha = 0.8,width = 0.015, color=colorVal, zorder=2)
+			# print("colorVal = ", colorVal)
+			plot_car(state[0,:], ax, 0.8, colorVal)
+			# ax.arrow(state[0][0],state[0][1],dx*0.075,dy*0.075,alpha = 0.8,width = 0.015, color=colorVal, zorder=2)
 
 		cb = mpl.colorbar.ColorbarBase(axc, cmap=cmap,
                                 norm=cNorm,orientation='vertical')
@@ -591,9 +578,9 @@ if (__name__=='__main__'):
 
 	batch_size = 256
 	gd_steps_per_step = 1.5
-	start_training_after_x_steps = 5000
+	start_training_after_x_steps = 10000
 	print("start_training_after_x_steps = ", start_training_after_x_steps)
-	max_steps = 25_000
+	max_steps = 50_000
 	evaluate_every_x_steps = 1000
 	save_agent_every_x_steps = 100_000
 

@@ -50,41 +50,44 @@ if (__name__=='__main__'):
 
 	env = gym.make("GHumanoid-v0")
 
+	# traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_RF_DCIL_humanoid/DCIL_v4_0.4_True_20220725_1515860/sim_traj_" + str(train_it) + ".pickle" #498000.pickle"
+	traj_path = "/Users/chenu/Desktop/PhD/results_JZ/results_DCIL_TRO/DCIL_humanoid_long_demo/sim_traj_3288000.pickle"
+	sim_traj = load_sim_traj(traj_path)
+	print(len(sim_traj))
 
+	frames = []
 
+	env.reset()
 
+	# viewer = mujoco_py.MjViewer(env.sim)
+	# target = 'torso'
 
-	for train_it in range(938000, 942000, 2000):
-		traj_path = "/Users/chenu/Desktop/PhD/results_JZ/preliminary_results/preliminary_results_DCIL_humanoid/v4/DCIL_v4_20220706_1957521/sim_traj_" + str(train_it) + ".pickle" #498000.pickle"
-		sim_traj = load_sim_traj(traj_path)
-		print(len(sim_traj))
+	L_body = ["right_lower_arm", "left_lower_arm", "left_foot", "right_foot", "torso"]
+	L_positions = []
 
-		frames = []
+	# sim_traj = [sim_traj[0] for _ in range(10)] + sim_traj
 
-		env.reset()
+	for sim_state in sim_traj:
 
-		# viewer = mujoco_py.MjViewer(env.sim)
-		# target = 'torso'
+		positions = []
 
-		for sim_state in sim_traj:
-			# time.sleep(0.1)
-			print("sim_state = ", sim_state)
-			env.set_inner_state(sim_state)
-			env.sim.forward()
+		# time.sleep(0.1)
+		print("sim_state = ", sim_state)
+		env.set_inner_state(sim_state)
+		env.sim.forward()
 
-			frame = env.env.sim.render(width=3000, height=1000, mode="offscreen")
-			frames.append(frame)
+		for body in L_body:
+			body_id = env.sim.model.body_name2id(body)
+			positions.append(env.sim.data.body_xpos[body_id])
 
-			# viewer.scn.flags[2] = 0 # Disable reflections (~25% speedup)
-			# body_id = env.sim.model.body_name2id(target)
-			# lookat = env.sim.data.body_xpos[body_id]
-			# for idx, value in enumerate(lookat):
-			# 	viewer.cam.lookat[idx] = value
-			# viewer.render()
-			# img = viewer.read_pixels(1080, 1080, depth=False)
-			# img = img[::-1, :, :]
-			# frames.append(img)
+		L_positions.append(positions)
+
+		# frame = env.env.sim.render(width=3000, height=1000, mode="offscreen")#, camera_id=0)
+		frame = env.env.sim.render(width=10000, height=1000, mode="window")#, camera_id=0)
+		print("frame = ", frame)
+		# time.sleep(0.5)
+		frames.append(frame)
 
 		env.close()
 
-		save_frames_as_video(frames, "/Users/chenu/Desktop/PhD/github/dcil_xpag/test/", train_it)
+	# save_frames_as_video(frames, "/Users/chenu/Desktop/PhD/github/dcil_xpag/test/", train_it)
