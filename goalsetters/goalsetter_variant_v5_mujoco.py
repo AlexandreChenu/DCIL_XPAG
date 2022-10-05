@@ -12,8 +12,10 @@ import numpy as np
 
 from operator import itemgetter
 
+from collections import deque
+
 class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
-	def __init__(self, do_overshoot = True):
+	def __init__(self, env, agent, do_overshoot = True):
 		super().__init__("DCILGoalSetter")
 
 		self.skills_sequence = []
@@ -26,6 +28,10 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 
 		self.weighted_sampling = True
 		self.window_size = 10
+
+		self.cut_steps = 5
+		self.agent = agent
+		self.env = env
 
 
 	def step(
@@ -51,6 +57,20 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 
 		# assert (new_obs["skill_indx"] == info["skill_indx"]).all()
 		# assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
+
+		## SGS
+		# q_a = self.agent.value(np.hstack((new_obs["observation"], new_obs["desired_goal"], new_obs["skill_indx"])), action)
+		q_a = self.agent.value(np.hstack((self.env._normalize_shape(observation["observation"],self.env.obs_rms["observation"]),
+								   self.env._normalize_shape(observation["desired_goal"].reshape(1,3),self.env.obs_rms["achieved_goal"]),
+								   self.convert_table[self.curr_indx.reshape(-1),:])), action)
+
+		self.q_a.append(q_a)
+
+		for k in range(self.curr_indx.shape[0]):
+			## update q_ref if success and q_a > q_ref
+			if info["is_success"][k]:
+				if self.q_a[-2][k] > self.q_ref[self.curr_indx[k]]:
+					self.q_ref[self.curr_indx[k]] = self.q_a[-2][k].copy()
 
 		self.last_info = info.copy()
 		self.last_done = done.copy()
@@ -109,6 +129,9 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 			self.skills_goals[i,:,:] = np.tile(env.project_to_goal_space(skill_goal_state).flatten(), (env.num_envs, 1))
 
 		self.convert_table = np.eye(self.nb_skills)
+
+		self.q_ref = np.ones(len(self.skills_sequence)) * 0.75
+		self.q_a = deque(maxlen=self.cut_steps)
 
 		return 0
 
