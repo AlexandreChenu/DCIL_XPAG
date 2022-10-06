@@ -324,7 +324,7 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, eval_goalsetter, sa
 			# print("observation.shape = ", observation["observation"].shape)
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
-			if q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
+			if done.max(): #q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
 				observation, next_skill_avail = eval_goalsetter.shift_skill(eval_env)
 				break
 			#
