@@ -349,7 +349,7 @@ if (__name__=='__main__'):
 
 	## create log dir
 	now = datetime.now()
-	dt_string = '%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
+	dt_string = 'DCIL_XPAG_variant_' + str(bool(int(parsed_args.goal))) + '_' + str(bool(int(parsed_args.index))) + '_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
 	# save_dir = os.path.join('/gpfswork/rech/kcr/ubj56je', 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
