@@ -324,7 +324,7 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, eval_goalsetter, sa
 			# print("observation.shape = ", observation["observation"].shape)
 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
 			# print("done = ", done)
-			if done.max(): #q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
+			if q_a[0] >= goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():#if q_a[0] >= (0.98**2)*(1-0.98**(10*(40-eval_goalsetter.curr_indx[0]+1)))/(1-0.98**10) or done.max(): #goalsetter.q_ref[eval_goalsetter.curr_indx[0]] or done.max():
 				observation, next_skill_avail = eval_goalsetter.shift_skill(eval_env)
 				break
 			#
@@ -402,7 +402,7 @@ if (__name__=='__main__'):
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
 	max_steps = 4_000_000
-	evaluate_every_x_steps = 4_000
+	evaluate_every_x_steps = 1_000
 	save_agent_every_x_steps = 50_000
 
 	## create log dir
@@ -426,6 +426,7 @@ if (__name__=='__main__'):
 	plot_projection = None
 	do_save_video = False
 	do_save_sim_traj = True
+	save_matrices = False
 
 
 	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant_v2(env.envs[0].compute_reward, env)
@@ -447,6 +448,8 @@ if (__name__=='__main__'):
 	num_rollouts = 0
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
+
+	max_total_reward = 0
 
 
 	for i in range(max_steps // env_info["num_envs"]):
@@ -475,15 +478,19 @@ if (__name__=='__main__'):
 			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, goalsetter, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
 			if do_save_video:
 				save_frames_as_video(frames, save_dir, i)
-			if do_save_sim_traj:
-				save_sim_traj(sim_traj, save_dir, i)
+
 
 			print("| cumulative env reward = ", total_env_reward)
 
 			f_total_eval_reward.write(str(total_env_reward) + "\n")
 
-			# print("traj_eval = ", traj_eval)
-			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+			# save trajectory only if good reward (avoid too large log dir)
+			if total_env_reward > max_total_reward:
+				plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+				if do_save_sim_traj:
+					save_sim_traj(sim_traj, save_dir, i)
+				max_total_reward = total_env_reward
+
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("| values = ", values)
 			for value in values:
@@ -513,8 +520,9 @@ if (__name__=='__main__'):
 				print("| overshoot success : ")
 				# print("| num_success_skill = ", np.array(num_success_skill))
 				# print("| num_rollouts_skill = ", np.array(num_rollouts_skill))
-				np.savetxt(save_dir + "/success_skill_" + str(i) + ".txt", num_success_skill)
-				np.savetxt(save_dir + "/rollout_skill_" + str(i) + ".txt", num_rollouts_skill)
+				if save_matrices :
+					np.savetxt(save_dir + "/success_skill_" + str(i) + ".txt", num_success_skill)
+					np.savetxt(save_dir + "/rollout_skill_" + str(i) + ".txt", num_rollouts_skill)
 				f_ratio.write(str(float(num_success/num_rollouts)) + "\n")
 				num_success = 0
 				num_rollouts = 0
