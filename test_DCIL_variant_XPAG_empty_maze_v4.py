@@ -43,7 +43,11 @@ import gym_gmazes
 ## DCIL versions
 from wrappers.gym_vec_env import gym_vec_env
 from skill_extractor import *
-from samplers import HER_DCIL_variant_v2 as HER_DCIL_variant
+
+from samplers import HER_DCIL_variant_v2 as HER_DCIL_variant ## state = obs + goal + index
+from samplers import HER_no_index ## state = obs + goal
+from samplers import EpisodicSampler_index ## state = obs + index
+
 from goalsetters import DCILGoalSetter_variant_v4 as DCILGoalSetter_variant
 from agents import SAC_variant
 
@@ -123,20 +127,48 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 		#print("stack = ", hstack(obs["observation"], obs["desired_goal"]))
 
 		if hasattr(env, "obs_rms"):
-			action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-												env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-												obs["skill_indx"])),
-				deterministic=True,
-			)
-			value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-									   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-									   obs["skill_indx"])), action)
+			if agent.full_state: ## obs + index + goal (DCIL-II)
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+													obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+										   obs["skill_indx"])), action)
+
+			elif not agent.goal: ## obs + index (option-like)
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													obs["skill_indx"])),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   obs["skill_indx"])), action)
+			else: ## obs + goal (classic GCRL)
+				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))),
+					deterministic=True,
+				)
+				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))), action)
+
 		else:
-			action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+			if agent.full_state:
+				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 				deterministic=True,
-			)
-			value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
-		values.append(value)
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+			elif not agent.goal:
+				action = agent.select_action(np.hstack((obs["observation"], obs["skill_indx"])),
+				deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["skill_indx"])), action)
+			else:
+				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"])),
+				deterministic=True,
+				)
+				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"])), action)
+		values.append(value[0])
 
 	fig, ax = plt.subplots()
 	plt.plot(list(thetas), values,label="learned V(s,g')")
@@ -150,90 +182,6 @@ def visu_value(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 	return values
 
-# def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
-#
-# 		goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]])]
-#
-# 		convert_table = np.eye(len(skill_sequence))
-#
-# 		skill_indx = 0
-#
-# 		for goal_indx, desired_goal in enumerate(goals):
-#
-# 			obs = eval_env.reset()
-#
-# 			min_x = (0.)
-# 			max_x = (2.)
-# 			min_y = (0.)
-# 			max_y = (2.)
-# 			s_x = np.linspace(min_x, max_x, 50)
-# 			s_y = np.linspace(min_y, max_y, 50)
-#
-# 			states_x, states_y = np.meshgrid(s_x, s_y)
-# 			orientations = np.linspace(-np.pi/2, np.pi/2, 20)
-#
-# 			values = []
-# 			for x, y in zip(states_x.flatten(), states_y.flatten()):
-# 				or_values = []
-# 				for theta in list(orientations):
-# 					obs["observation"][0][:] = np.array([x,y,theta])
-# 					obs["achieved_goal"][0][:] = np.array([x,y])
-# 					obs["desired_goal"][0][:] = desired_goal[0][:2]
-# 					obs["skill_indx"] = np.array([convert_table[skill_indx]])
-#
-# 					if hasattr(env, "obs_rms"):
-# 						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-# 															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-# 															obs["skill_indx"])),
-# 							deterministic=True,
-# 						)
-# 						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-# 												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-# 												   obs["skill_indx"])), action)
-# 					else:
-# 						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
-# 							deterministic=True,
-# 						)
-# 						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
-# 					or_values.append(value[0])
-#
-# 				values.append(max(or_values))
-#
-# 			# print(states_x.flatten().shape)
-# 			# print(states_y.flatten().shape)
-# 			# print(len(values))
-#
-# 			fig, ax = plt.subplots()
-# 			cb = plt.contourf(states_x, states_y, np.array(values).reshape(states_x.shape), levels=30)
-# 			fig.colorbar(cb)
-# 			eval_env.plot(ax)
-# 			ax.scatter(desired_goal[0][0],desired_goal[0][1])
-#
-# 			circles = []
-# 			for i in range(0,len(skill_sequence)):
-# 				skl = skill_sequence[i]
-# 				st, _, dg = skl
-# 				obs, full_st = st
-# 				circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.6)
-# 				circles.append(circle)
-#
-# 				x = obs[0][0]
-# 				y = obs[0][1]
-# 				dx = np.cos(obs[0][2])
-# 				dy = np.sin(obs[0][2])
-# 				arrow = plt.arrow(x,y,dx*0.3,dy*0.3,alpha = 0.2,width = 0.04, color="m", zorder=6)
-# 				ax.add_patch(arrow)
-#
-# 			coll = mc.PatchCollection(circles, color="plum", alpha = 0.5, zorder = 4)
-# 			ax.add_collection(coll)
-#
-# 			plt.savefig(save_dir + "/visu_value_landscape_" + str(goal_indx) + "_it_" + str(it) + ".png")
-# 			plt.close(fig)
-#
-# 			with open(save_dir + '/values_landscape_goal_' + str(goal_indx) + "_it_" + str(it) + '.npy', 'wb') as f:
-# 				np.save(f, np.array(values).reshape(states_x.shape))
-#
-# 		return
 
 def plot_car(state, ax, alpha , truckcolor="-k"):  # pragma: no cover
         x = state[0] #self.pose[0]
@@ -315,20 +263,47 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 				obs["skill_indx"] = np.array([convert_table[skill_indx]])
 
 				if hasattr(env, "obs_rms"):
-					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-														obs["skill_indx"])),
-						deterministic=True,
-					)
-					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-											   obs["skill_indx"])), action)
-				else:
-					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
-						deterministic=True,
-					)
-					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+					if agent.full_state: ## obs + index + goal (DCIL-II)
+						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+															obs["skill_indx"])),
+							deterministic=True,
+						)
+						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+												   obs["skill_indx"])), action)
 
+					elif not agent.goal: ## obs + index (option-like)
+						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+															obs["skill_indx"])),
+							deterministic=True,
+						)
+						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												   obs["skill_indx"])), action)
+					else: ## obs + goal (classic GCRL)
+						action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+															env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))),
+							deterministic=True,
+						)
+						value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+												   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))), action)
+
+				else:
+					if agent.full_state:
+						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+						deterministic=True,
+						)
+						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+					elif not agent.goal:
+						action = agent.select_action(np.hstack((obs["observation"], obs["skill_indx"])),
+						deterministic=True,
+						)
+						value = agent.value(np.hstack((obs["observation"], obs["skill_indx"])), action)
+					else:
+						action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"])),
+						deterministic=True,
+						)
+						value = agent.value(np.hstack((obs["observation"], obs["desired_goal"])), action)
 				values.append(value[0])
 				states.append(obs["observation"].copy())
 
@@ -346,19 +321,47 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			obs["skill_indx"] = np.array([convert_table[skill_indx]])
 
 			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-													obs["skill_indx"])),
-					deterministic=True,
-				)
-				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-										   obs["skill_indx"])), action)
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+														obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+											   obs["skill_indx"])), action)
+
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   obs["skill_indx"])), action)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))), action)
+
 			else:
-				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+				if agent.full_state:
+					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 					deterministic=True,
-				)
-				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+				elif not agent.goal:
+					action = agent.select_action(np.hstack((obs["observation"], obs["skill_indx"])),
+					deterministic=True,
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["skill_indx"])), action)
+				else:
+					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"])),
+					deterministic=True,
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"])), action)
 
 			values.append(value[0])
 			states.append(obs["observation"].copy())
@@ -378,19 +381,47 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			obs["skill_indx"] = np.array([convert_table[final_skill_indx]])
 
 			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-													obs["skill_indx"])),
-					deterministic=True,
-				)
-				value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
-										   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
-										   obs["skill_indx"])), action)
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+														obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]),
+											   obs["skill_indx"])), action)
+
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														obs["skill_indx"])),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   obs["skill_indx"])), action)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))),
+						deterministic=True,
+					)
+					value = agent.value(np.hstack((env._normalize_shape(obs["observation"],env.obs_rms["observation"]),
+											   env._normalize_shape(obs["desired_goal"],env.obs_rms["achieved_goal"]))), action)
+
 			else:
-				action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
+				if agent.full_state:
+					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])),
 					deterministic=True,
-				)
-				value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"], obs["skill_indx"])), action)
+				elif not agent.goal:
+					action = agent.select_action(np.hstack((obs["observation"], obs["skill_indx"])),
+					deterministic=True,
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["skill_indx"])), action)
+				else:
+					action = agent.select_action(np.hstack((obs["observation"], obs["desired_goal"])),
+					deterministic=True,
+					)
+					value = agent.value(np.hstack((obs["observation"], obs["desired_goal"])), action)
 
 			values.append(value[0])
 			states.append(obs["observation"].copy())
@@ -435,15 +466,37 @@ def eval_traj(env, eval_env, agent, goalsetter):
 
 			traj.append(observation["observation"])
 			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-													observation["oh_skill_indx"])),
-					deterministic=True,
-				)
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]))),
+						deterministic=True,
+					)
+
 			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-				deterministic=True,
-				)
+				if agent.full_state:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				elif not agent.goal:
+					action = agent.select_action(np.hstack((observation["observation"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				else:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"])),
+					deterministic=True,
+					)
+
 			# print("action = ", action)
 			observation, _, done, info = goalsetter.step(
 	            eval_env, observation, action, *eval_env.step(action)
@@ -478,15 +531,37 @@ def eval_relabelling(env, eval_env, agent, goalsetter):
 			traj.append(observation["observation"])
 			observation["desired_goal"][:,:] = goal[:,:]
 			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-													observation["oh_skill_indx"])),
-					deterministic=True,
-				)
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]))),
+						deterministic=True,
+					)
+
 			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-				deterministic=True,
-				)
+				if agent.full_state:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				elif not agent.goal:
+					action = agent.select_action(np.hstack((observation["observation"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				else:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"])),
+					deterministic=True,
+					)
+
 			# print("action = ", action)
 			observation, _, done, info = goalsetter.step(
 	            eval_env, observation, action, *eval_env.step(action)
@@ -548,6 +623,8 @@ if (__name__=='__main__'):
 	parser = argparse.ArgumentParser(description='Argument for DCIL')
 	# parser.add_argument('--demo_path', help='path to demonstration file')
 	parser.add_argument('--save_path', help='path to save directory')
+	parser.add_argument('--goal', help='remove goal from obs')
+	parser.add_argument('--index', help='remove index from obs')
 	parsed_args = parser.parse_args()
 
 	env_args = {}
@@ -599,9 +676,16 @@ if (__name__=='__main__'):
 	save_episode = True
 	plot_projection = None
 
+	if bool(int(parsed_args.goal)) and bool(int(parsed_args.index)): ## full extended state
+		observation_dim = env_info['observation_dim'] + env_info['desired_goal_dim'] + num_skills
+	elif bool(int(parsed_args.index)): ## no goal (obs + index)
+		observation_dim = env_info['observation_dim'] + num_skills
+	else: ## no index (obs + goal)
+		observation_dim = env_info['observation_dim'] + env_info['desired_goal_dim']
+
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
-		else env_info['observation_dim'] + env_info['desired_goal_dim'] + num_skills,
+		else observation_dim,
 		env_info['action_dim'],
 		params = {
 			"actor_lr": 0.001,
@@ -617,7 +701,28 @@ if (__name__=='__main__'):
 			"temp_lr": 0.0003,
 		}
 	)
-	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant(env.compute_reward, env)
+
+	agent.goal = bool(int(parsed_args.goal))
+	agent.index = bool(int(parsed_args.index))
+	print("agent.goal = ", agent.goal)
+	print("agent.index = ", agent.index)
+	if (agent.goal and agent.index):
+		agent.full_state = True
+	else:
+		agent.full_state = False
+	print("agent.full_state = ", agent.full_state)
+
+	if not env_info["is_goalenv"]:
+		sampler = DefaultEpisodicSampler()
+	elif agent.full_state:
+		sampler = HER_DCIL_variant(env.compute_reward, env)
+	elif not agent.goal:
+		print("\n\n\n NO GOAL \n\n\n")
+		sampler = EpisodicSampler_index(env)
+	else:
+		print("\n\n\n NO INDEX \n\n\n")
+		sampler = HER_no_index(env.compute_reward, env)
+
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
 		buffer_size=1_000_000,
@@ -693,23 +798,56 @@ if (__name__=='__main__'):
 		else:
 			env.do_update = False
 			# t1_a_select = time.time()
-			if hasattr(eval_env, "obs_rms"):
-				action = agent.select_action(
-					observation
-					if not env_info["is_goalenv"]
-					else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
-									env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
-									observation["oh_skill_indx"])),
-					deterministic=False,
-				)
 
+
+			if hasattr(env, "obs_rms"):
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
+										observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]))),
+						deterministic=False,
+					)
 			else:
-				action = agent.select_action(
-					observation
-					if not env_info["is_goalenv"]
-					else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-					deterministic=False,
-				)
+				if agent.full_state:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				elif not agent.goal:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				else:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["desired_goal"])),
+						deterministic=False,
+					)
 			# t2_a_select = time.time()
 			# print("action selection time = ", t2_a_select - t1_a_select)
 
@@ -728,12 +866,7 @@ if (__name__=='__main__'):
 		next_observation, reward, done, info = goalsetter.step(
             env, observation, action, *env.step(action)
         )
-		# t2_step = time.time()
-		# print("step time = ", t2_step - t1_step)
 
-		# print("done = ", done)
-
-		# pdb.set_trace()
 
 		step = {
 			"observation": observation,
