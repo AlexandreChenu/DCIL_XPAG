@@ -341,9 +341,9 @@ if (__name__=='__main__'):
 
 	batch_size = 256
 	gd_steps_per_step = 1.5
-	start_training_after_x_steps = 5000
+	start_training_after_x_steps = 500
 	print("start_training_after_x_steps = ", start_training_after_x_steps)
-	max_steps = 50_000
+	max_steps = 150_000
 	evaluate_every_x_steps = 1000
 	save_agent_every_x_steps = 100_000
 
@@ -377,7 +377,7 @@ if (__name__=='__main__'):
 			"actor_lr": 0.001,
 			"backup_entropy": False,
 			"critic_lr": 0.001,
-			"discount": 0.99,
+			"discount": 0.9,
 			# "hidden_dims": (512, 512, 512),
 			"hidden_dims": (400,300),
 			"init_temperature": 0.001,
