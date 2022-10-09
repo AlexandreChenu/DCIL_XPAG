@@ -34,7 +34,7 @@ from matplotlib import collections as mc
 import numpy as np
 import copy
 
-import gym_ghumanoid
+import gym_cassie_run
 
 ## DCIL versions
 from wrappers.gym_vec_env_mujoco import gym_vec_env
@@ -94,7 +94,7 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 
 	visu_success_zones(eval_env, skill_sequence, ax)
 
-	for _azim in range(45, 46):
+	for _azim in range(90, 91):
 		ax.view_init(azim=_azim)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
@@ -183,78 +183,6 @@ def save_sim_traj(sim_traj, path, iteration):
 
 	return
 
-# def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
-# 	traj = []
-# 	traj_length = 0
-# 	observation = goalsetter.reset(eval_env, eval_env.reset())
-# 	eval_done = False
-#
-# 	frames = []
-# 	sim_states = []
-#
-# 	sum_env_reward = 0
-#
-# 	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
-# 	while traj_length < demo_length and not eval_done:
-# 		# skill_success = False
-# 		# print("curr_indx = ", goalsetter.curr_indx)
-# 		max_steps = eval_env.get_max_episode_steps()
-# 		# print("max_steps = ", max_steps)
-# 		for i_step in range(0,int(max_steps[0])):
-# 			traj_length += 1
-# 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
-# 			traj.append(observation["observation"].copy())
-# 			if hasattr(env, "obs_rms"):
-# 				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
-# 													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-# 													observation["oh_skill_indx"])),
-# 					deterministic=True,
-# 				)
-# 			else:
-# 				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-# 				deterministic=True,
-# 				)
-#
-# 			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
-# 			# print("eval_env.envs = ", id(eval_env.envs))
-# 			# print("eval_env = ", id(eval_env))
-# 			# print("eval_env.env = ", id(eval_env.env))
-# 			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
-# 			# print("eval_env.env.envs = ", id(eval_env.env.envs))
-#
-# 			if save_video:
-# 				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
-# 				# print("frame = ", frame)
-# 				frames.append(frame)
-#
-# 			if save_sim_traj:
-# 				sim_state = eval_env.envs[0].env.get_inner_state()
-# 				# print("sim_state = ", sim_state)
-# 				sim_states.append(sim_state)
-#
-# 			# print("action = ", action)
-# 			observation, _, done, info = goalsetter.step(
-# 				eval_env, observation, action, *eval_env.step(action)
-# 			)
-#
-# 			sum_env_reward += info["reward_from_env"][0]
-#
-#
-# 			# print("observation eval = ", observation["observation"][0][:15])
-# 			# print("observation.shape = ", observation["observation"].shape)
-# 			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
-# 			# print("done = ", done)
-# 			if done.max():
-# 				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
-# 				break
-# 			if traj_length >= demo_length:
-# 				next_skill_avail = False
-# 				break
-#
-# 		if not next_skill_avail:
-# 			eval_done = True
-#
-# 	return traj, frames, sim_states, sum_env_reward
 
 def eval_traj(env, eval_env, agent, demo_length, goalsetter, eval_goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
@@ -355,20 +283,20 @@ if (__name__=='__main__'):
 	env_args["demo_path"] = str(parsed_args.demo_path)
 
 	num_envs = 1  # the number of rollouts in parallel during training
-	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
+	env, eval_env, env_info = gym_vec_env('GCassieGoal-v0', num_envs)
 	print("env = ", env)
 	num_skills = None
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
-	## adjust init state
+	## adjust init sim state
 	env.envs[0].init_sim_state = s_extractor.L_sim_states[0]
-	env.envs[0].init_qpos = env.envs[0].init_sim_state.qpos.copy()
-	env.envs[0].init_qvel = env.envs[0].init_sim_state.qvel.copy()
+	env.envs[0].init_qpos = env.envs[0].init_sim_state[0].copy()
+	env.envs[0].init_qvel = env.envs[0].init_sim_state[1].copy()
 	eval_env.envs[0].init_sim_state = s_extractor.L_sim_states[0]
-	eval_env.envs[0].init_qpos = eval_env.envs[0].init_sim_state.qpos.copy()
-	eval_env.envs[0].init_qvel = eval_env.envs[0].init_sim_state.qvel.copy()
+	eval_env.envs[0].init_qpos = eval_env.envs[0].init_sim_state[0].copy()
+	eval_env.envs[0].init_qvel = eval_env.envs[0].init_sim_state[1].copy()
 
 	if num_skills == None:
 		num_skills = len(s_extractor.skills_sequence)
@@ -456,7 +384,7 @@ if (__name__=='__main__'):
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
-	max_total_reward = 0
+	max_total_reward = -10000
 
 
 	for i in range(max_steps // env_info["num_envs"]):
@@ -496,7 +424,7 @@ if (__name__=='__main__'):
 				plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 				if do_save_sim_traj:
 					save_sim_traj(sim_traj, save_dir, i)
-				max_total_reward = total_env_reward
+				# max_total_reward = total_env_reward
 
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("| values = ", values)

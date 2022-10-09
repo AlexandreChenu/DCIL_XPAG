@@ -50,117 +50,117 @@ def check_goalenv(env) -> bool:
 
 
 def gym_vec_env_(env_name, num_envs, do_normalize=True):
-	if "num_envs" in inspect.signature(
-		gym.envs.registration.load(
-			gym.envs.registry.spec(env_name).entry_point
-		).__init__
-	).parameters and hasattr(
-		gym.envs.registration.load(gym.envs.registry.spec(env_name).entry_point),
-		"reset_done",
-	):
-		# no need to create a VecEnv and wrap it if the env accepts 'num_envs' as an
-		# argument at __init__ and has a reset_done() method.
-		# env = NormalizationWrapper(gym.make(env_name, num_envs=num_envs))
-		env = gym.make(env_name, num_envs=num_envs)
-		# We force the environment to have a time limit, but
-		# env.spec.max_episode_steps cannot exist as it would automatically trigger
-		# the TimeLimit wrapper of gym, which does not handle batch envs. We require
-		# max_episode_steps to be stored as an attribute of env:
-		assert (
-			(
-				not hasattr(env.spec, "max_episode_steps")
-				or env.spec.max_episode_steps is None
-			)
-			and hasattr(env, "max_episode_steps")
-			and env.max_episode_steps is not None
-		), (
-			"Trying to create a batch environment. env.max_episode_steps must exist, "
-			"and env.spec.max_episode_steps must be None."
-		)
-		max_episode_steps = int(env.max_episode_steps[0])
-		env_type = "Gym"
-	else:
-		dummy_env = gym.make(env_name)
-		# We force the env to have either a standard gym time limit (with the max number
-		# of steps defined in .spec.max_episode_steps), or that the max number of steps
-		# is stored in .max_episode_steps (and in this case we assume that the
-		# environment appropriately prevents episodes from exceeding max_episode_steps
-		# steps).
-		assert (
-			hasattr(dummy_env.spec, "max_episode_steps")
-			and dummy_env.spec.max_episode_steps is not None
-		) or (
-			hasattr(dummy_env, "max_episode_steps")
-			and dummy_env.max_episode_steps is not None
-		), "Only allowing gym envs with time limit (spec.max_episode_steps)."
-		# env = NormalizationWrapper(
-		#     ResetDoneVecWrapper(
-		#         AsyncVectorEnv(
-		#             [
-		#                 (lambda: gym.make(env_name))
-		#                 if hasattr(dummy_env, "reset_done")
-		#                 else (lambda: ResetDoneWrapper(gym.make(env_name)))
-		#             ]
-		#             * num_envs,
-		#             worker=_worker_shared_memory_no_auto_reset,
-		#         )
-		#     )
-		# )
-		if do_normalize:
-			env = NormalizationWrapper(DCILVecWrapper(
-					SyncVectorEnv(
-						[
-							(lambda: gym.make(env_name))
-							if hasattr(dummy_env, "reset_done")
-							else (lambda: ResetDoneWrapper(gym.make(env_name)))
-						]
-						* num_envs,
-					)
-				))
-		else:
-			env = DCILVecWrapper(
-					SyncVectorEnv(
-						[
-							(lambda: gym.make(env_name))
-							if hasattr(dummy_env, "reset_done")
-							else (lambda: ResetDoneWrapper(gym.make(env_name)))
-						]
-						* num_envs,
-					)
+	# if "num_envs" in inspect.signature(
+	# 	gym.envs.registration.load(
+	# 		gym.envs.registry.spec(env_name).entry_point
+	# 	).__init__
+	# ).parameters and hasattr(
+	# 	gym.envs.registration.load(gym.envs.registry.spec(env_name).entry_point),
+	# 	"reset_done",
+	# ):
+	# 	# no need to create a VecEnv and wrap it if the env accepts 'num_envs' as an
+	# 	# argument at __init__ and has a reset_done() method.
+	# 	# env = NormalizationWrapper(gym.make(env_name, num_envs=num_envs))
+	# 	env = gym.make(env_name, num_envs=num_envs)
+	# 	# We force the environment to have a time limit, but
+	# 	# env.spec.max_episode_steps cannot exist as it would automatically trigger
+	# 	# the TimeLimit wrapper of gym, which does not handle batch envs. We require
+	# 	# max_episode_steps to be stored as an attribute of env:
+	# 	assert (
+	# 		(
+	# 			not hasattr(env.spec, "max_episode_steps")
+	# 			or env.spec.max_episode_steps is None
+	# 		)
+	# 		and hasattr(env, "max_episode_steps")
+	# 		and env.max_episode_steps is not None
+	# 	), (
+	# 		"Trying to create a batch environment. env.max_episode_steps must exist, "
+	# 		"and env.spec.max_episode_steps must be None."
+	# 	)
+	# 	max_episode_steps = int(env.max_episode_steps[0])
+	# 	env_type = "Gym"
+	# else:
+	dummy_env = gym.make(env_name)
+	# We force the env to have either a standard gym time limit (with the max number
+	# of steps defined in .spec.max_episode_steps), or that the max number of steps
+	# is stored in .max_episode_steps (and in this case we assume that the
+	# environment appropriately prevents episodes from exceeding max_episode_steps
+	# steps).
+	assert (
+		hasattr(dummy_env.spec, "max_episode_steps")
+		and dummy_env.spec.max_episode_steps is not None
+	) or (
+		hasattr(dummy_env, "max_episode_steps")
+		and dummy_env.max_episode_steps is not None
+	), "Only allowing gym envs with time limit (spec.max_episode_steps)."
+	# env = NormalizationWrapper(
+	#     ResetDoneVecWrapper(
+	#         AsyncVectorEnv(
+	#             [
+	#                 (lambda: gym.make(env_name))
+	#                 if hasattr(dummy_env, "reset_done")
+	#                 else (lambda: ResetDoneWrapper(gym.make(env_name)))
+	#             ]
+	#             * num_envs,
+	#             worker=_worker_shared_memory_no_auto_reset,
+	#         )
+	#     )
+	# )
+	if do_normalize:
+		env = NormalizationWrapper(DCILVecWrapper(
+				SyncVectorEnv(
+					[
+						(lambda: gym.make(env_name))
+						if hasattr(dummy_env, "reset_done")
+						else (lambda: ResetDoneWrapper(gym.make(env_name)))
+					]
+					* num_envs,
 				)
+			))
+	else:
+		env = DCILVecWrapper(
+				SyncVectorEnv(
+					[
+						(lambda: gym.make(env_name))
+						if hasattr(dummy_env, "reset_done")
+						else (lambda: ResetDoneWrapper(gym.make(env_name)))
+					]
+					* num_envs,
+				)
+			)
 
-		# env = DCILVecWrapper(
-		# 		SyncVectorEnv(
-		# 			[
-		# 				(lambda: gym.make(env_name))
-		# 				if hasattr(dummy_env, "reset_done")
-		# 				else (lambda: ResetDoneWrapper(gym.make(env_name)))
-		# 			]
-		# 			* num_envs,
-		# 		)
-		# 	)
+	# env = DCILVecWrapper(
+	# 		SyncVectorEnv(
+	# 			[
+	# 				(lambda: gym.make(env_name))
+	# 				if hasattr(dummy_env, "reset_done")
+	# 				else (lambda: ResetDoneWrapper(gym.make(env_name)))
+	# 			]
+	# 			* num_envs,
+	# 		)
+	# 	)
 
-		env.device = "cpu"
-		env._spec = dummy_env.spec
+	env.device = "cpu"
+	env._spec = dummy_env.spec
 
-		## Note (Alex): dummy_env.spec.max_episode_steps may not exist with the new version of assert
-		if hasattr(dummy_env, "max_episode_steps"):
-			max_episode_steps = dummy_env.max_episode_steps
-		else:
-			max_episode_steps = dummy_env.spec.max_episode_steps
-		# env_type = "Mujoco" if isinstance(dummy_env.unwrapped, MujocoEnv) else "Gym"
-		# To avoid imposing a dependency to mujoco, we simply guess that the
-		# environment is a mujoco environment when it has the 'init_qpos', 'init_qvel'
-		# and 'state_vector' attributes:
-		env_type = (
-			"Mujoco"
-			if hasattr(dummy_env.unwrapped, "init_qpos")
-			and hasattr(dummy_env.unwrapped, "init_qvel")
-			and hasattr(dummy_env.unwrapped, "state_vector")
-			else "Gym"
-		)
-		# The 'init_qpos' and 'state_vector' attributes are the one required to
-		# save mujoco episodes (cf. class SaveEpisode in xpag/tools/eval.py).
+	## Note (Alex): dummy_env.spec.max_episode_steps may not exist with the new version of assert
+	if hasattr(dummy_env, "max_episode_steps"):
+		max_episode_steps = dummy_env.max_episode_steps
+	else:
+		max_episode_steps = dummy_env.spec.max_episode_steps
+	# env_type = "Mujoco" if isinstance(dummy_env.unwrapped, MujocoEnv) else "Gym"
+	# To avoid imposing a dependency to mujoco, we simply guess that the
+	# environment is a mujoco environment when it has the 'init_qpos', 'init_qvel'
+	# and 'state_vector' attributes:
+	env_type = (
+		"Mujoco"
+		if hasattr(dummy_env.unwrapped, "init_qpos")
+		and hasattr(dummy_env.unwrapped, "init_qvel")
+		and hasattr(dummy_env.unwrapped, "state_vector")
+		else "Gym"
+	)
+	# The 'init_qpos' and 'state_vector' attributes are the one required to
+	# save mujoco episodes (cf. class SaveEpisode in xpag/tools/eval.py).
 	is_goalenv = check_goalenv(env)
 	env_info = {
 		"env_type": env_type,
