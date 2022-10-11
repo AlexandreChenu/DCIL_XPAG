@@ -290,13 +290,13 @@ if (__name__=='__main__'):
 	if not env_info["is_goalenv"]:
 		sampler = DefaultEpisodicSampler()
 	elif agent.full_state:
-		sampler = HER_DCIL_variant(env.compute_reward, env)
+		sampler = HER_DCIL_variant(env.envs[0].compute_reward, env)
 	elif not agent.goal:
 		print("\n\n\n NO GOAL \n\n\n")
 		sampler = EpisodicSampler_index(env)
 	else:
 		print("\n\n\n NO INDEX \n\n\n")
-		sampler = HER_no_index(env.compute_reward, env)
+		sampler = HER_no_index(env.envs[0].compute_reward, env)
 
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
