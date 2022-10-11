@@ -15,7 +15,7 @@ from operator import itemgetter
 from collections import deque
 
 class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
-	def __init__(self, env, agent, do_overshoot = True):
+	def __init__(self, env, agent, do_overshoot = True, do_sgs = True):
 		super().__init__("DCILGoalSetter")
 
 		self.skills_sequence = []
@@ -32,6 +32,8 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		self.cut_steps = 5
 		self.agent = agent
 		self.env = env
+
+		self.do_sgs = do_sgs
 
 
 	def step(
@@ -59,18 +61,19 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		# assert (new_obs["next_skill_indx"] == info["next_skill_indx"]).all()
 
 		## SGS
+		if self.do_sgs:
 		# q_a = self.agent.value(np.hstack((new_obs["observation"], new_obs["desired_goal"], new_obs["skill_indx"])), action)
-		q_a = self.agent.value(np.hstack((self.env._normalize_shape(observation["observation"],self.env.obs_rms["observation"]),
-								   self.env._normalize_shape(observation["desired_goal"].reshape(1,3),self.env.obs_rms["achieved_goal"]),
-								   self.convert_table[self.curr_indx.reshape(-1),:])), action)
+			q_a = self.agent.value(np.hstack((self.env._normalize_shape(observation["observation"],self.env.obs_rms["observation"]),
+									   self.env._normalize_shape(observation["desired_goal"].reshape(1,observation["desired_goal"].shape[1]),self.env.obs_rms["achieved_goal"]),
+									   self.convert_table[self.curr_indx.reshape(-1),:])), action)
 
-		self.q_a.append(q_a)
+			self.q_a.append(q_a)
 
-		for k in range(self.curr_indx.shape[0]):
-			## update q_ref if success and q_a > q_ref
-			if info["is_success"][k]:
-				if self.q_a[-1][k] > self.q_ref[self.curr_indx[k]]:
-					self.q_ref[self.curr_indx[k]] = self.q_a[-1][k].copy()
+			for k in range(self.curr_indx.shape[0]):
+				## update q_ref if success and q_a > q_ref
+				if info["is_success"][k]:
+					if self.q_a[-1][k] > self.q_ref[self.curr_indx[k]]:
+						self.q_ref[self.curr_indx[k]] = self.q_a[-1][k].copy()
 
 		self.last_info = info.copy()
 		self.last_done = done.copy()
@@ -289,15 +292,15 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 
 		for s_indx in list(success_indx):
 			# print("s_indx = ", s_indx)
-			self.L_skills_results[self.reset_indx.flatten()[s_indx]].append(1)
-			if len(self.L_skills_results[self.reset_indx.flatten()[s_indx]]) > self.window_size:
-				self.L_skills_results[self.reset_indx.flatten()[s_indx]].pop(0)
+			self.L_skills_results[self.curr_indx.flatten()[s_indx]].append(1)
+			if len(self.L_skills_results[self.curr_indx.flatten()[s_indx]]) > self.window_size:
+				self.L_skills_results[self.curr_indx.flatten()[s_indx]].pop(0)
 
 		for f_indx in list(fail_indx):
 			# print("f_indx = ", f_indx)
-			self.L_skills_results[self.reset_indx.flatten()[f_indx]].append(0)
-			if len(self.L_skills_results[self.reset_indx.flatten()[f_indx]]) > self.window_size:
-				self.L_skills_results[self.reset_indx.flatten()[f_indx]].pop(0)
+			self.L_skills_results[self.curr_indx.flatten()[f_indx]].append(0)
+			if len(self.L_skills_results[self.curr_indx.flatten()[f_indx]]) > self.window_size:
+				self.L_skills_results[self.curr_indx.flatten()[f_indx]].pop(0)
 
 		return
 

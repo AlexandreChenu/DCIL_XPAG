@@ -38,7 +38,11 @@ import gym_gfetch
 ## DCIL versions
 from wrappers.gym_vec_env_mujoco import gym_vec_env
 from skill_extractor import skills_extractor_Mj
-from samplers import HER_DCIL_variant_v2
+
+from samplers import HER_DCIL_variant_v2 as HER_DCIL_variant ## state = obs + goal + index
+from samplers import HER_no_index ## state = obs + goal
+from samplers import EpisodicSampler_index ## state = obs + index
+
 from goalsetters import DCILGoalSetterMj_variant_v4
 from agents import SAC_variant
 
@@ -116,15 +120,36 @@ def eval_traj(env, eval_env, agent, goalsetter):
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			traj.append(observation["observation"].copy())
 			if hasattr(env, "obs_rms"):
-				action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
-													env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
-													observation["oh_skill_indx"])),
-					deterministic=True,
-				)
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														observation["oh_skill_indx"])),
+						deterministic=True,
+					)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(np.hstack((env._normalize_shape(observation["observation"],env.obs_rms["observation"]),
+														env._normalize_shape(observation["desired_goal"],env.obs_rms["achieved_goal"]))),
+						deterministic=True,
+					)
+
 			else:
-				action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-				deterministic=True,
-				)
+				if agent.full_state:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				elif not agent.goal:
+					action = agent.select_action(np.hstack((observation["observation"], observation["oh_skill_indx"])),
+					deterministic=True,
+					)
+				else:
+					action = agent.select_action(np.hstack((observation["observation"], observation["desired_goal"])),
+					deterministic=True,
+					)
 
 			# print("action = ", action)
 			observation, _, done, info = goalsetter.step(
@@ -178,6 +203,8 @@ if (__name__=='__main__'):
 	parser = argparse.ArgumentParser(description='Argument for DCIL')
 	parser.add_argument('--demo_path', help='path to demonstration file')
 	parser.add_argument('--save_path', help='path to save directory')
+	parser.add_argument('--goal', help='remove goal from obs')
+	parser.add_argument('--index', help='remove index from obs')
 	parsed_args = parser.parse_args()
 
 	env_args = {}
@@ -192,16 +219,6 @@ if (__name__=='__main__'):
 
 	num_skills = len(s_extractor.skills_sequence)
 
-	goalsetter = DCILGoalSetterMj_variant_v4()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)#, n_skills=2)
-	eval_goalsetter = DCILGoalSetterMj_variant_v4()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)#, n_skills=2)
-
-	# print(goalsetter.skills_observations)
-	# print(goalsetter.skills_full_states)
-	# print(goalsetter.skills_max_episode_steps)
-	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
-
 	batch_size = 256
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = 10000
@@ -211,7 +228,7 @@ if (__name__=='__main__'):
 
 	## create log dir
 	now = datetime.now()
-	dt_string = 'DCIL_fetch_v4_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
+	dt_string = 'DCIL_fetch_v4_' + str(bool(int(parsed_args.goal))) + '_' + str(bool(int(parsed_args.index))) + '%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
 	# save_dir = os.path.join('/gpfswork/rech/kcr/ubj56je', 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
@@ -241,13 +258,46 @@ if (__name__=='__main__'):
 	with open(save_dir + "/sac_params.txt", "w") as f:
 		print(params, file=f)
 
+	if bool(int(parsed_args.goal)) and bool(int(parsed_args.index)): ## full extended state
+		observation_dim = env_info['observation_dim'] + env_info['desired_goal_dim'] + num_skills
+	elif bool(int(parsed_args.index)): ## no goal (obs + index)
+		observation_dim = env_info['observation_dim'] + num_skills
+	else: ## no index (obs + goal)
+		observation_dim = env_info['observation_dim'] + env_info['desired_goal_dim']
+
 	agent = SAC_variant(
 		env_info['observation_dim'] if not env_info['is_goalenv']
-		else env_info['observation_dim'] + env_info['desired_goal_dim'] + num_skills,
+		else observation_dim,
 		env_info['action_dim'],
 		params = params
 	)
-	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant_v2(env.envs[0].compute_reward, env)
+
+	goalsetter = DCILGoalSetterMj_variant_v4(env, agent, do_sgs = False)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env)#, n_skills=2)
+	eval_goalsetter = DCILGoalSetterMj_variant_v4(eval_env, agent, do_sgs = False)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env)#, n_skills=2)
+
+	agent.goal = bool(int(parsed_args.goal))
+	agent.index = bool(int(parsed_args.index))
+	print("agent.goal = ", agent.goal)
+	print("agent.index = ", agent.index)
+	if (agent.goal and agent.index):
+		agent.full_state = True
+	else:
+		agent.full_state = False
+	print("agent.full_state = ", agent.full_state)
+
+	if not env_info["is_goalenv"]:
+		sampler = DefaultEpisodicSampler()
+	elif agent.full_state:
+		sampler = HER_DCIL_variant(env.compute_reward, env)
+	elif not agent.goal:
+		print("\n\n\n NO GOAL \n\n\n")
+		sampler = EpisodicSampler_index(env)
+	else:
+		print("\n\n\n NO INDEX \n\n\n")
+		sampler = HER_no_index(env.compute_reward, env)
+
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
 		buffer_size=1_000_000,
@@ -291,7 +341,7 @@ if (__name__=='__main__'):
 			traj_eval, nb_skills_success = eval_traj(env, eval_env, agent, eval_goalsetter)
 			# print("traj_eval = ", traj_eval)
 			f_nb_skills_success.write(str(nb_skills_success) + "\n")
-			#plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
+			plot_traj(eval_env, trajs, traj_eval, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 			# visu_value_maze(env, eval_env, agent, s_extractor.skills_sequence, save_dir, it=i)
 
@@ -334,22 +384,55 @@ if (__name__=='__main__'):
 		else:
 			env.do_update = False
 			t1_a_select = time.time()
-			if hasattr(eval_env, "obs_rms"):
-				action = agent.select_action(
-					observation
-					if not env_info["is_goalenv"]
-					else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
-									env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
-									observation["oh_skill_indx"])),
-					deterministic=False,
-				)
+			if hasattr(env, "obs_rms"):
+				if agent.full_state: ## obs + index + goal (DCIL-II)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]),
+										observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				elif not agent.goal: ## obs + index (option-like)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				else: ## obs + goal (classic GCRL)
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((env._normalize(observation["observation"], env.obs_rms["observation"]),
+										env._normalize(observation["desired_goal"], env.obs_rms["achieved_goal"]))),
+						deterministic=False,
+					)
 			else:
-				action = agent.select_action(
-					observation
-					if not env_info["is_goalenv"]
-					else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
-					deterministic=False,
-				)
+				if agent.full_state:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				elif not agent.goal:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["oh_skill_indx"])),
+						deterministic=False,
+					)
+				else:
+					action = agent.select_action(
+						observation
+						if not env_info["is_goalenv"]
+						else np.hstack((observation["observation"], observation["desired_goal"])),
+						deterministic=False,
+					)
+
 			t2_a_select = time.time()
 			# print("action selection time = ", t2_a_select - t1_a_select)
 

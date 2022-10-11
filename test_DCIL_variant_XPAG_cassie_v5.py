@@ -70,6 +70,7 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
+	ax.set_zlim(0.,2.)
 
 	for traj in s_trajs:
 		# print("traj = ", traj)
@@ -94,8 +95,8 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 
 	visu_success_zones(eval_env, skill_sequence, ax)
 
-	for _azim in range(90, 91):
-		ax.view_init(azim=_azim)
+	for _azim in range(80, 360, 90):
+		ax.view_init(azim=_azim, elev=20)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
 	plt.close(fig)
@@ -384,7 +385,7 @@ if (__name__=='__main__'):
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
-	max_total_reward = -10000
+	max_total_reward = -100.
 
 
 	for i in range(max_steps // env_info["num_envs"]):
@@ -424,7 +425,7 @@ if (__name__=='__main__'):
 				plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 				if do_save_sim_traj:
 					save_sim_traj(sim_traj, save_dir, i)
-				# max_total_reward = total_env_reward
+				max_total_reward = total_env_reward
 
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("| values = ", values)

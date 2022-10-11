@@ -98,6 +98,7 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 		ax.view_init(azim=_azim)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
+
 	plt.close(fig)
 	return
 
@@ -362,7 +363,7 @@ if (__name__=='__main__'):
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
-	## adjust init state
+	## (quick fix) adjust init state
 	env.envs[0].init_sim_state = s_extractor.L_sim_states[0]
 	env.envs[0].init_qpos = env.envs[0].init_sim_state.qpos.copy()
 	env.envs[0].init_qvel = env.envs[0].init_sim_state.qvel.copy()
