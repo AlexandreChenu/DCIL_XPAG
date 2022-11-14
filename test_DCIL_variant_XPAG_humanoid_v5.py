@@ -70,6 +70,9 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
+	ax.set_xlim(-1., 10.)
+	ax.set_ylim(-2., 0.)
+	ax.set_zlim(0., 2.)
 
 	for traj in s_trajs:
 		# print("traj = ", traj)
@@ -362,6 +365,7 @@ if (__name__=='__main__'):
 
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
 	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
+
 
 	## (quick fix) adjust init state
 	env.envs[0].init_sim_state = s_extractor.L_sim_states[0]

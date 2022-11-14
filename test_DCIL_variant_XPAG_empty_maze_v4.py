@@ -209,8 +209,8 @@ def plot_car(state, ax, alpha , truckcolor="-k"):  # pragma: no cover
 def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 		goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]]), np.array([[1., 0.2]])]
-		plot_goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]]), np.array([[1., 0.2]])]
-		goals_colors = ["m", "blue", "crimson",  "violet", "orange"]
+		plot_goals = [np.array([[1., 1.8]]), np.array([[1., 1.4]]), np.array([[1., 1.]]), np.array([[1., 0.6]]), np.array([[1., 0.2]]), np.array([[1.8, 1.]])]
+		goals_colors = ["m", "blue", "crimson",  "violet", "orange", "crimson"]
 		convert_table = np.eye(len(skill_sequence))
 
 		skill_indx = 0
@@ -227,9 +227,9 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			skl = skill_sequence[i]
 			st, _, dg = skl
 			obs, full_st = st
-			circle = plt.Circle((dg[0][0], dg[0][1]), 0.05, color='m', alpha = 0.6)
+			circle = plt.Circle((dg[0][0], dg[0][1]), 0.1, color='m', alpha = 0.2)
 			circles.append(circle)
-		coll = mc.PatchCollection(circles, color="crimson", alpha = 1., zorder = 1)
+		coll = mc.PatchCollection(circles, color="crimson", alpha = 0.2, zorder = 1)
 		ax.add_collection(coll)
 
 		ax.scatter(0.25,1.,c="black")
@@ -237,9 +237,9 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 
 		for goal, goal_color in zip(plot_goals, goals_colors):
 			circles_r = []
-			circle_r = plt.Circle((goal[0][0], goal[0][1]), 0.05, alpha = 0.6)
+			circle_r = plt.Circle((goal[0][0], goal[0][1]), 0.1, alpha = 0.4)
 			circles_r.append(circle_r)
-			coll_r = mc.PatchCollection(circles_r, color=goal_color, alpha = 0.5, zorder = 1)
+			coll_r = mc.PatchCollection(circles_r, color=goal_color, alpha = 0.3, zorder = 1)
 			ax.add_collection(coll_r)
 
 		values = []
@@ -426,9 +426,14 @@ def visu_value_maze(env, eval_env, agent, skill_sequence, save_dir, it=0):
 			values.append(value[0])
 			states.append(obs["observation"].copy())
 
-		cmap = plt.cm.coolwarm
-		# cNorm  = colors.Normalize(vmin=min(values), vmax=max(values))
-		cNorm  = colors.Normalize(vmin=1., vmax=2.)
+		# cmap = plt.cm.coolwarm
+		# # cNorm  = colors.Normalize(vmin=min(values), vmax=max(values))
+		# cNorm  = colors.Normalize(vmin=0., vmax=2.)
+		# scalarMap = cmx.ScalarMappable(norm=cNorm,cmap=cmap)
+
+		cmap = colors.ListedColormap(['lightgrey','lightsteelblue','navy'])
+		bounds=[0,0.5,1.5,2.]
+		cNorm = colors.BoundaryNorm(bounds, cmap.N)
 		scalarMap = cmx.ScalarMappable(norm=cNorm,cmap=cmap)
 
 		for state, value in zip(states, values):
