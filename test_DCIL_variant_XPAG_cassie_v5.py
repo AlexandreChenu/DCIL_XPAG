@@ -58,11 +58,11 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 		obs, full_state = starting_state
 		goal = eval_env.project_to_goal_space(obs)
 
-		u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+		u, v = np.mgrid[0:2*np.pi:20j, 0:2*np.pi:20j]
 
-		x = goal[0] + 0.05*np.cos(u)*np.sin(v)
-		y = goal[1] + 0.05*np.sin(u)*np.sin(v)
-		z = goal[2] + 0.05*np.cos(v)
+		x = goal[0] + 0.02*np.cos(u)*np.sin(v)
+		y = goal[1] + 0.02*np.sin(u)*np.sin(v)
+		z = goal[2] + 0.02*np.cos(v)
 		ax.plot_wireframe(x, y, z, color="blue", alpha = 0.1)
 
 	return
@@ -70,7 +70,9 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
-	ax.set_zlim(0.,2.)
+	ax.set_xlim(-1., 11.)
+	ax.set_ylim(-0.35, 0.1)
+	ax.set_zlim(0., 1.)
 
 	for traj in s_trajs:
 		# print("traj = ", traj)
@@ -93,10 +95,9 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 	Z_eval = [eval_env.project_to_goal_space(state[0])[2] for state in traj_eval]
 	ax.plot(X_eval, Y_eval, Z_eval, c = "blue")
 
-	visu_success_zones(eval_env, skill_sequence, ax)
-
-	for _azim in range(80, 360, 90):
-		ax.view_init(azim=_azim, elev=20)
+	for _azim in range(70, 71):
+		ax.view_init(azim=_azim)
+		visu_success_zones(eval_env, skill_sequence, ax)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
 	plt.close(fig)
