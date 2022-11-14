@@ -72,6 +72,9 @@ def visu_success_zones(eval_env, skill_sequence, ax):
 def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, it=0):
 	fig = plt.figure()
 	ax = fig.add_subplot(projection='3d')
+	ax.set_xlim(1.5, -1.5)
+	ax.set_ylim(0., 1.)
+	ax.set_zlim(0., 2.)
 
 	for traj in s_trajs:
 		# print("traj = ", traj)
@@ -96,7 +99,7 @@ def plot_traj(eval_env, s_trajs, f_trajs, traj_eval, skill_sequence, save_dir, i
 
 	visu_success_zones(eval_env, skill_sequence, ax)
 
-	for _azim in range(45, 360, 90):
+	for _azim in range(45, 46):
 		ax.view_init(azim=_azim)
 		plt.savefig(save_dir + "/trajs_azim_" + str(_azim) + "_it_" + str(it) + ".png")
 	# plt.savefig(save_dir + "/trajs_it_"+str(it)+".png")
@@ -277,27 +280,6 @@ if (__name__=='__main__'):
 	print("env = ", env)
 	num_skills = 5
 
-
-	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
-	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
-
-	goalsetter = DCILGoalSetterMj_variant_v4()
-	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=num_skills)
-	eval_goalsetter = DCILGoalSetterMj_variant_v4()
-	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=num_skills)
-
-	# print(goalsetter.skills_observations)
-	# print(goalsetter.skills_full_states)
-	# print(goalsetter.skills_max_episode_steps)
-	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
-
-	batch_size = 64
-	gd_steps_per_step = 1.5
-	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 1_000_000
-	evaluate_every_x_steps = 2_000
-	save_agent_every_x_steps = 50_000
-
 	## create log dir
 	now = datetime.now()
 	dt_string = 'DCIL_v4_' + str(parsed_args.eps_state) + "_" + str(bool(parsed_args.value_clipping)) + '_%s_%s' % (datetime.now().strftime('%Y%m%d'), str(os.getpid()))
@@ -305,16 +287,9 @@ if (__name__=='__main__'):
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
 	os.mkdir(save_dir)
-	## log file for success ratio
-	f_ratio = open(save_dir + "/ratio.txt", "w")
-	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
-	f_values = open(save_dir + "/value_start_states.txt", "w")
-	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
 
-	save_episode = True
-	plot_projection = None
-	do_save_video = False
-	do_save_sim_traj = False
+	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
+	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
 
 	params = {
 		"actor_lr": 0.0003,
@@ -340,6 +315,37 @@ if (__name__=='__main__'):
 		env_info['action_dim'],
 		params=params
 	)
+
+	goalsetter = DCILGoalSetterMj_variant_v4(env, agent)
+	goalsetter.set_skills_sequence(s_extractor.skills_sequence, env, n_skills=num_skills)
+	eval_goalsetter = DCILGoalSetterMj_variant_v4(env, agent)
+	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=num_skills)
+
+	# print(goalsetter.skills_observations)
+	# print(goalsetter.skills_full_states)
+	# print(goalsetter.skills_max_episode_steps)
+	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
+
+	batch_size = 64
+	gd_steps_per_step = 1.5
+	start_training_after_x_steps = env_info['max_episode_steps'] * 50
+	max_steps = 1_000_000
+	evaluate_every_x_steps = 2_000
+	save_agent_every_x_steps = 50_000
+
+
+	## log file for success ratio
+	f_ratio = open(save_dir + "/ratio.txt", "w")
+	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
+	f_values = open(save_dir + "/value_start_states.txt", "w")
+	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
+
+	save_episode = True
+	plot_projection = None
+	do_save_video = False
+	do_save_sim_traj = True
+
+
 	sampler = DefaultEpisodicSampler() if not env_info['is_goalenv'] else HER_DCIL_variant_v2(env.envs[0].compute_reward, env)
 	buffer_ = DefaultEpisodicBuffer(
 		max_episode_steps=env_info['max_episode_steps'],
@@ -360,6 +366,7 @@ if (__name__=='__main__'):
 	num_success_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 	num_rollouts_skill = np.zeros((goalsetter.nb_skills,goalsetter.nb_skills)).astype(np.intc)
 
+	max_total_reward = 0
 
 	for i in range(max_steps // env_info["num_envs"]):
 		# print("learn: ", eval_env.project_to_goal_space(observation["observation"][0]))
@@ -387,15 +394,18 @@ if (__name__=='__main__'):
 			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
 			if do_save_video:
 				save_frames_as_video(frames, save_dir, i)
-			if do_save_sim_traj:
-				save_sim_traj(sim_traj, save_dir, i)
+
+			if total_env_reward > max_total_reward:
+				plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
+				if do_save_sim_traj:
+					save_sim_traj(sim_traj, save_dir, i)
+				max_total_reward = total_env_reward
 
 			print("| cumulative env reward = ", total_env_reward)
 
 			f_total_eval_reward.write(str(total_env_reward) + "\n")
 
 			# print("traj_eval = ", traj_eval)
-			#plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
 			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
 			print("values = ", values)
 			for value in values:
