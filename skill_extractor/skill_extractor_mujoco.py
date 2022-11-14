@@ -29,8 +29,8 @@ class skills_extractor_Mj():
         ## limit number of skills
 		# self.L_observations = self.L_observations[100:]
 		# self.L_sim_states = self.L_sim_states[100:]
-		# self.L_observations = self.L_observations[:200]
-		# self.L_sim_states = self.L_sim_states[:200]
+		self.L_observations = self.L_observations[:250]
+		self.L_sim_states = self.L_sim_states[:250]
 
 		self.demo_length = len(self.L_observations)
 
