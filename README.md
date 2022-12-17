@@ -109,14 +109,14 @@ python test_DCIL_variant_XPAG_humanoid_walk_PB_v4.py --demo_path <path_to_this_d
 
 ## Humanoid Locomotion
 
-![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_locomotion.mp4)
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_locomotion.gif)
 
 ## Humanoid Stand-up 
 
-![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_standup.mp4)
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_standup.gif)
 
 ## Cassie 
 
-![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/cassie_run_slow.mp4)
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/cassie_run_slow.gif)
 
 
