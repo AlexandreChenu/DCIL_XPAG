@@ -1,5 +1,5 @@
 # DCIL_XPAG
-Implementation of DCIL-II based on jax-based XPAG library. 
+Implementation of DCIL-II based on jax-based [XPAG library](https://github.com/perrin-isir/xpag). 
 
 ### How does it work
 
