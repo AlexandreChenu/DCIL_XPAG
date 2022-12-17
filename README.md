@@ -105,7 +105,7 @@ python test_DCIL_variant_XPAG_humanoid_walk_PB_v4.py --demo_path <path_to_this_d
 - value_skill_-_it_- : value for x-y position of skill starting state for different orientations 
 - transitions_- : sampled training transitions + segment between true desired goal and relabelled desired goal
 
-# RESULT 
+# Learned behaviors 
 
 ## Humanoid Locomotion
 
