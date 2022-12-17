@@ -55,13 +55,8 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		self.last_info = info.copy()
 		self.last_done = done.copy()
 
-		# print("reward = ", reward)
-		# print("info['is_success'] = ", info["is_success"])
-
 		assert reward.max() <= 1
 		assert reward.min() >= 0
-
-		# assert reward.max() <= 0
 
 		return new_obs, reward, done, info
 
@@ -144,10 +139,7 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 			if len(self.L_skills_results[i]) == 0:
 				weights_available = False
 
-		# # print("self.L_skills_results = ", self.L_skills_results)
-		# #print("weights available = ", weights_available)
-		#
-		# ## fitness based selection
+		## weighted goal selection
 		if self.weighted_sampling and weights_available:
 
 			L_rates = self.get_skills_success_rates()
@@ -178,8 +170,6 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		## uniform sampling
 		else:
 			new_skill_indx = np.random.randint(0, self.nb_skills, (n_envs,)).reshape(n_envs,1)
-
-		# print("new_skill_indx = ", new_skill_indx)
 
 		return new_skill_indx.astype(np.intc)
 
@@ -259,10 +249,6 @@ class DCILGoalSetterMj_variant_v4(GoalSetter, ABC):
 		is_done_not_success = np.logical_and(is_done.flatten(), np.logical_not(is_success.flatten())).astype(np.intc)
 		success_indx = np.where(is_success.flatten() == 1)[0]
 		fail_indx = np.where(is_done_not_success == 1)[0]
-
-		# print("is_done_not_success = ", is_done_not_success)
-		# print("success_indx = ", success_indx)
-		# print("fail_indx = ", fail_indx)
 
 		for s_indx in list(success_indx):
 			# print("s_indx = ", s_indx)

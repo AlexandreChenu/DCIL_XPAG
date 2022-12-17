@@ -261,9 +261,6 @@ class DCILGoalSetter_variant_v4(GoalSetter, ABC):
 		success_indx = np.where(is_success.flatten() == 1)[0]
 		fail_indx = np.where(is_done_not_success == 1)[0]
 
-		# print("is_done_not_success = ", is_done_not_success)
-		# print("success_indx = ", success_indx)
-		# print("fail_indx = ", fail_indx)
 
 		for s_indx in list(success_indx):
 			# print("s_indx = ", s_indx)
@@ -300,7 +297,7 @@ class DCILGoalSetter_variant_v4(GoalSetter, ABC):
 
 		## shift skill indx if skipping
 		start_indx = new_curr_indx.copy()
-		skipping_indx = np.where(r>0.9, new_curr_indx+1, new_curr_indx) ## skipping for 10% of rollouts
+		skipping_indx = np.where(r>1., new_curr_indx+1, new_curr_indx) ## skipping for 10% of rollouts
 		new_curr_indx = np.where(skipping_indx < self.nb_skills, skipping_indx, new_curr_indx)
 
 		## change curr_indx if actually done

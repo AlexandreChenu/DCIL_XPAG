@@ -1,6 +1,10 @@
 # DCIL_XPAG
 Implementation of DCIL-II based on jax-based XPAG library. 
 
+### How does it work
+
+[Paper](https://arxiv.org/abs/2211.04786)
+
 # Install 
 
 1. Clone DCIL repo,
@@ -12,11 +16,12 @@ git clone https://github.com/AlexandreChenu/DCIL_XPAG.git
 2. Create virtual environment dcil_env from environment.ylm,
 
 
-If your want to use Mujoco environments: 
+If you want to use Mujoco environments (Fetch + Humanoid locomotion & standup): 
 ```sh
 cd DCIL_XPAG
 conda env create --name dcil_env --file environment.yml
 ```
+If you want to use Cassie envionments check this [Repo](https://github.com/perrin-isir/gym-cassie-run) for installation. 
 
 If you want to use PyBullet environments:
 
@@ -76,9 +81,15 @@ python test_DCIL_variant_XPAG_v4.py --demo_path ./demos/dubins_convert/1.demo --
 python test_DCIL_variant_XPAG_humanoid_v4.py --demo_path ./demos/humanoid_convert/1.demo --save_path <path_to_results_directory> --eps_state 0.5  --value_clipping 1
 ```
 
-(should work and learn sequential goal reaching with less than 1m training steps)
+(learns sequential goal reaching with less than 1m training steps)
 
-# Run Humanoid Experiment (PyBullet version) 
+# Run Cassie Experiment
+
+```sh
+python test_DCIL_variant_XPAG_cassie_v5.py --demo_path ./demos/cassie_convert/1.demo --save_path <path_to_results_directory> --eps_state 0.5  --value_clipping 1
+```
+
+# WORK IN PROGRESS - Run Humanoid Experiment (PyBullet version) 
 
 ```sh
 python test_DCIL_variant_XPAG_humanoid_walk_PB_v4.py --demo_path <path_to_this_directory>/demos/humanoid_PB_walk/ --save_path <path_to_results_directory> --eps_state 0.2  --value_clipping 1
@@ -93,4 +104,19 @@ python test_DCIL_variant_XPAG_humanoid_walk_PB_v4.py --demo_path <path_to_this_d
 - trajs_it_- : training rollouts + skill-chaining evaluation + success goals sets 
 - value_skill_-_it_- : value for x-y position of skill starting state for different orientations 
 - transitions_- : sampled training transitions + segment between true desired goal and relabelled desired goal
+
+# RESULT 
+
+## Humanoid Locomotion
+
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_locomotion.mp4)
+
+## Humanoid Stand-up 
+
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/humanoid_standup.mp4)
+
+## Cassie 
+
+![](https://github.com/AlexandreChenu/DCIL_XPAG/blob/main/media/cassie_run_slow.mp4)
+
 

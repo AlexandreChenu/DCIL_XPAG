@@ -27,23 +27,19 @@ class skills_extractor_Mj():
 
 		self.L_observations, self.L_sim_states = self.get_demo(demo_path)
         ## limit number of skills
-		# self.L_observations = self.L_observations[100:]
-		# self.L_sim_states = self.L_sim_states[100:]
-		self.L_observations = self.L_observations[:220]
-		self.L_sim_states = self.L_sim_states[:220]
+		self.L_observations = self.L_observations[:100]
+		self.L_sim_states = self.L_sim_states[:100]
+		# self.L_observations = self.L_observations[:220]
+		# self.L_sim_states = self.L_sim_states[:220]
 
 		self.demo_length = len(self.L_observations)
 
-		print("demo_length = ", self.demo_length)
 
-		# print("len(L_obs) = ", len(self.L_observations))
-		# print("len(L_sim) = ", len(self.L_sim_states))
-		# print("demo_length = ", self.demo_length)
-		# print("self.L_observations = ", self.L_observations)
+		print("_____________________ goal extraction __________________________")
+		print("|________________________________________________________________")
+		print("|			demo_length = ", self.demo_length)
 		self.skills_sequence, self.demo_length = self.get_skills(self.L_observations, self.L_sim_states)
-
-		# print("demo_length = ", self.demo_length)
-
+		print("|________________________________________________________________")
 		## visual test
 		# self.test_visu()
 
@@ -109,19 +105,16 @@ class skills_extractor_Mj():
 		demo_length = 0
 
 		i = 0
+		skill_indx = 0
 		while i < len(L_sim_states)-1:
 			k = 0
 			sum_dist = 0
 
-			# cumulative distance ( + minimum skill length of 15 control steps)
+			# cumulative distance ( + minimum skill length of 10 control steps + max 25)
 			while ((sum_dist <= self.eps_state or k < 10 ) and k < 25) and i + k < len(L_observations) - 1:
-			# while sum_dist <= self.eps_state  and i + k < len(L_observations) - 1:
 				self.env.set_state([L_sim_states[i+k]], np.ones((1,)))
 				shifted_state = self.env.state_vector()
-				# print("shifted_state = ", shifted_state)
-				# print("curr_state = ", curr_state)
 				sum_dist += self.env.goal_distance(self.env.project_to_goal_space(shifted_state), self.env.project_to_goal_space(curr_state))
-				# print("sum_dist = ", sum_dist)
 				curr_state = shifted_state.copy()
 				k += 1
 				demo_length += 1
@@ -129,24 +122,11 @@ class skills_extractor_Mj():
 			# skills_sequence.append((curr_starting_state, int(self.beta*k), shifted_state.copy()))
 			skills_sequence.append((curr_starting_state, max(int(self.beta*k), 100), shifted_state.copy()))
 			i = i + k
-
-			print("k = ", k)
-
-			# print("\ncurr_state[:10] = ", curr_state[:50])
-			# print("L_observations[i][:10] = ", L_observations[i-1][:50])
-			# print("test eq = ", curr_state[:100] == L_observations[i-1][:100])
-
-			## check that curr_state corresponds to observation
-			# assert (curr_state == L_observations[i-1]).all()
-			# print("curr_state == ")
-			# print("\ncurr_state[:10] = ", curr_state[:10])
-			# print("L_observations[i][:10] = ", L_observations[i][:10])
-			# print("L_sim_states[i][3][:10] = ", L_sim_states[i][3][:10])
-			# assert (L_observations[i] == L_sim_states[i][3]).all()
+			print("|			skill " + str(skill_indx) + " length = ", k)
+			skill_indx += 1
 
 			curr_starting_state = (curr_state, L_sim_states[i-1])
 
-		# print("len(skills_sequence) = ", len(skills_sequence))
 		return skills_sequence, demo_length
 
 
