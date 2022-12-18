@@ -43,7 +43,6 @@ from samplers import HER_DCIL_variant_v2
 from goalsetters import DCILGoalSetterMj_variant_v4
 from agents import SAC_variant
 
-import cv2
 import pickle
 
 import pdb
@@ -152,29 +151,6 @@ def visu_value(env, eval_env, agent, skill_sequence):
 
 		return values
 
-def save_frames_as_video(frames, path, iteration):
-
-	video_name = path + '/video' + str(iteration) + '.mp4'
-	height, width, layers = frames[0].shape
-	#resize
-	percent = 100
-	width = int(frames[0].shape[1] * percent / 100)
-	height = int(frames[0].shape[0] * percent / 100)
-
-	video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (width, height))
-
-	for frame in frames:
-		width = int(frame.shape[1] * percent / 100)
-		height = int(frame.shape[0] * percent / 100)
-		dim = (width, height)
-		resize_frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
-		cvt_frame = cv2.cvtColor(resize_frame, cv2.COLOR_BGR2RGB)
-		video.write(cvt_frame)
-
-	video.release()
-	cv2.destroyAllWindows()
-
-	return
 
 def save_sim_traj(sim_traj, path, iteration):
 
@@ -183,9 +159,8 @@ def save_sim_traj(sim_traj, path, iteration):
 
 	return
 
-def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, save_sim_traj=False):
+def eval_traj(env, eval_env, agent, goalsetter, save_video=False, save_sim_traj=False):
 	traj = []
-	traj_length = 0
 	observation = goalsetter.reset(eval_env, eval_env.reset())
 	eval_done = False
 
@@ -193,15 +168,14 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 	sim_states = []
 
 	sum_env_reward = 0
+	nb_skills_success = 0
 
-	# while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
-	while traj_length < demo_length and not eval_done:
+	while goalsetter.curr_indx[0] <= goalsetter.nb_skills and not eval_done:
 		# skill_success = False
 		# print("curr_indx = ", goalsetter.curr_indx)
 		max_steps = eval_env.get_max_episode_steps()
 		# print("max_steps = ", max_steps)
 		for i_step in range(0,int(max_steps[0])):
-			traj_length += 1
 			#print("eval_env.skill_manager.indx_goal = ", eval_env.skill_manager.indx_goal)
 			traj.append(observation["observation"].copy())
 			if hasattr(env, "obs_rms"):
@@ -215,18 +189,6 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 				deterministic=True,
 				)
 
-			# print("\neval_env.envs[0] = ", id(eval_env.envs[0]))
-			# print("eval_env.envs = ", id(eval_env.envs))
-			# print("eval_env = ", id(eval_env))
-			# print("eval_env.env = ", id(eval_env.env))
-			# print("eval_env.env.envs[0] = ", id(eval_env.env.envs[0]))
-			# print("eval_env.env.envs = ", id(eval_env.env.envs))
-
-			if save_video:
-				frame = eval_env.envs[0].sim.render(width=1080, height=1080, mode="offscreen")
-				# print("frame = ", frame)
-				frames.append(frame)
-
 			if save_sim_traj:
 				sim_state = eval_env.envs[0].env.get_inner_state()
 				# print("sim_state = ", sim_state)
@@ -239,22 +201,14 @@ def eval_traj(env, eval_env, agent, demo_length, goalsetter, save_video=False, s
 
 			sum_env_reward += info["reward_from_env"][0]
 
-
-			# print("observation eval = ", observation["observation"][0][:15])
-			# print("observation.shape = ", observation["observation"].shape)
-			# print("observation = ", eval_env.project_to_goal_space(observation["observation"].reshape(268,)))
-			# print("done = ", done)
 			if done.max():
-				observation, next_skill_avail = goalsetter.shift_skill(eval_env)
+				if info["is_success"] == 1:
+					nb_skills_success += 1
+				observation = goalsetter.reset_done(eval_env, eval_env.reset_done())
 				break
-			if traj_length >= demo_length:
-				next_skill_avail = False
-				break
-
-		if not next_skill_avail:
+		if goalsetter.curr_indx[0] >= goalsetter.nb_skills - 1 or not goalsetter.last_info["is_success"]:
 			eval_done = True
-
-	return traj, frames, sim_states, sum_env_reward
+	return traj, frames, sim_states, sum_env_reward, nb_skills_success
 
 
 if (__name__=='__main__'):
@@ -272,12 +226,11 @@ if (__name__=='__main__'):
 
 	num_envs = 1  # the number of rollouts in parallel during training
 	env, eval_env, env_info = gym_vec_env('GHumanoidGoal-v0', num_envs)
-	print("env = ", env)
+	# print("env = ", env)
 	num_skills = None
 
-
 	s_extractor = skills_extractor_Mj(parsed_args.demo_path, eval_env, eps_state=float(parsed_args.eps_state))
-	print("nb_skills (remember to adjust value clipping in sac_from_jaxrl)= ", len(s_extractor.skills_sequence))
+	print("nb_skills (remember to adjust upper bound value clipping in sac_from_jaxrl!) = ", len(s_extractor.skills_sequence))
 
 	if num_skills == None:
 		num_skills = len(s_extractor.skills_sequence)
@@ -287,16 +240,12 @@ if (__name__=='__main__'):
 	eval_goalsetter = DCILGoalSetterMj_variant_v4()
 	eval_goalsetter.set_skills_sequence(s_extractor.skills_sequence, eval_env, n_skills=num_skills)
 
-	# print(goalsetter.skills_observations)
-	# print(goalsetter.skills_full_states)
-	# print(goalsetter.skills_max_episode_steps)
-	# print("goalsetter.skills_sequence = ", goalsetter.skills_sequence)
 
 	batch_size = 64
 	gd_steps_per_step = 1.5
 	start_training_after_x_steps = env_info['max_episode_steps'] * 50
-	max_steps = 4_000_000
-	evaluate_every_x_steps = 4_000
+	max_steps = 2_000_000
+	evaluate_every_x_steps = 1_000
 	save_agent_every_x_steps = 50_000
 
 	## create log dir
@@ -306,17 +255,21 @@ if (__name__=='__main__'):
 	# save_dir = os.path.join(os.path.expanduser('~'), 'results', 'xpag', 'DCIL_XPAG_dubins', dt_string)
 	save_dir = str(parsed_args.save_path) + dt_string
 	os.mkdir(save_dir)
-	## log file for success ratio
+
+
+	####### openning log file + quick logs config
 	f_ratio = open(save_dir + "/ratio.txt", "w")
 	f_critic_loss = open(save_dir + "/critic_loss.txt", "w")
 	f_values = open(save_dir + "/value_start_states.txt", "w")
 	f_total_eval_reward = open(save_dir + "/total_eval_reward.txt", "w")
-
+	f_nb_skills = open(save_dir + "/nb_skills.txt", "w")
 	save_episode = True
 	plot_projection = None
 	do_save_video = False
-	do_save_sim_traj = True
+	do_save_sim_traj = False
+	do_visu_value = False
 
+	### params for SAC
 	params = {
 		"actor_lr": 0.0003,
 		"backup_entropy": False,
@@ -331,7 +284,6 @@ if (__name__=='__main__'):
 		"tau": 0.005,
 		"temp_lr": 0.0003,
 	}
-
 	with open(save_dir + "/sac_params.txt", "w") as f:
 		print(params, file=f)
 
@@ -352,6 +304,8 @@ if (__name__=='__main__'):
 	timing_reset()
 	observation = goalsetter.reset(env, env.reset())
 	print("observation = ", observation)
+
+	### logs init
 	s_trajs = []
 	f_trajs = []
 	traj = []
@@ -363,10 +317,9 @@ if (__name__=='__main__'):
 
 
 	for i in range(max_steps // env_info["num_envs"]):
-		# print("learn: ", eval_env.project_to_goal_space(observation["observation"][0]))
 		traj.append(observation["observation"].copy())
-		# print("\n")
 
+		##### multiple logs (training traj visualization)
 		if not i % max(evaluate_every_x_steps // env_info["num_envs"], 1):
 			print("------------------------------------------------------------------------------------------------------------")
 			print("| training steps nb ", i)
@@ -376,44 +329,32 @@ if (__name__=='__main__'):
 			if hasattr(env, "obs_rms"):
 				print("| do update ? ", env.do_update)
 				print("| RMS = ", env.obs_rms["observation"].mean[0][:10])
-			# single_rollout_eval(
-			# 	i * env_info["num_envs"],
-			# 	eval_env,
-			# 	env_info,
-			# 	agent,
-			# 	save_dir=save_dir,
-			# 	plot_projection=plot_projection,
-			# 	save_episode=save_episode,
-			# )
-			traj_eval, frames, sim_traj, total_env_reward = eval_traj(env, eval_env, agent, s_extractor.demo_length, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
-			if do_save_video:
-				save_frames_as_video(frames, save_dir, i)
+
+			traj_eval, frames, sim_traj, total_env_reward, nb_skills = eval_traj(env, eval_env, agent, eval_goalsetter, save_video=do_save_video, save_sim_traj=do_save_sim_traj)
+
 			if do_save_sim_traj:
 				save_sim_traj(sim_traj, save_dir, i)
 
 			print("| cumulative env reward = ", total_env_reward)
-
 			f_total_eval_reward.write(str(total_env_reward) + "\n")
+			print("| nb skills = ", nb_skills)
+			f_nb_skills.write(str(nb_skills) + "\n")
 
 			# print("traj_eval = ", traj_eval)
 			plot_traj(eval_env, s_trajs, f_trajs, traj_eval, eval_goalsetter.skills_sequence, save_dir, it=i)
-			values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
-			print("| values = ", values)
-			for value in values:
-				f_values.write(str(value) + " ")
-			f_values.write("\n")
 
-			# t2_logs = time.time()
-			# print("logs time = ", t2_logs - t1_logs)
+			if do_visu_value is True:
+				values = visu_value(env, eval_env, agent, eval_goalsetter.skills_sequence)
+				print("| values = ", values)
+				for value in values:
+					f_values.write(str(value) + " ")
+				f_values.write("\n")
 
-			# if i > 2000:
-				# visu_transitions(eval_env, transitions, it = i)
-				# print("info_train = ", info_train)
+
 			s_trajs = []
 			f_trajs = []
 			traj = []
-			# if info_train is not None:
-			# 	print("rewards = ", max(info_train["rewards"]))
+
 
 			if num_rollouts > 0:
 				print("| success ratio (successful skill-rollouts / total rollouts) : ", float(num_success/num_rollouts))
@@ -436,6 +377,7 @@ if (__name__=='__main__'):
 					num_success_skill[reset_indx,:curr_indx] = 1
 					num_rollouts_skill[reset_indx,:curr_indx] = 1
 
+				### unitary test (Olivier)
 				check_skill_matrix_valid(num_rollouts_skill,num_success_skill)
 
 			print("------------------------------------------------------------------------------------------------------------")
@@ -448,7 +390,9 @@ if (__name__=='__main__'):
 			action = env_info["action_space"].sample()
 		else:
 			env.do_update = False
-			t1_a_select = time.time()
+
+			##### action selection
+			# t1_a_select = time.time()
 			if hasattr(env, "obs_rms"):
 				action = agent.select_action(
 					observation
@@ -465,30 +409,28 @@ if (__name__=='__main__'):
 					else np.hstack((observation["observation"], observation["desired_goal"], observation["oh_skill_indx"])),
 					deterministic=False,
 				)
-			t2_a_select = time.time()
+			# t2_a_select = time.time()
 			# print("action selection time = ", t2_a_select - t1_a_select)
 
-			t1_train = time.time()
+			# t1_train = time.time()
 			for _ in range(max(round(gd_steps_per_step * env_info["num_envs"]), 1)):
 				transitions = buffer_.sample(batch_size)
 				info_train = agent.train_on_batch(transitions)
-			t2_train = time.time()
+			# t2_train = time.time()
 			# print("training time = ", t2_train - t1_train)
 
 			if i % 100 == 0:
 				f_critic_loss.write(str(info_train["critic_loss"]) + "\n")
 				f_critic_loss.flush()
 
-		t1_step = time.time()
+		### goalsetter step -> env step
+		# t1_step = time.time()
 		next_observation, reward, done, info = goalsetter.step(
 			env, observation, action, *env.step(action)
 		)
-		t2_step = time.time()
+		# t2_step = time.time()
 		# print("step time = ", t2_step - t1_step)
 
-		# print("done = ", done)
-
-		# pdb.set_trace()
 
 		step = {
 			"observation": observation,
@@ -498,9 +440,6 @@ if (__name__=='__main__'):
 			"done": done,
 			"next_observation": next_observation,
 		}
-
-		# print("step = ", step)
-		# print("info = ", info)
 
 		if env_info["is_goalenv"]:
 			step["done_from_env"] = info["done_from_env"]
@@ -514,7 +453,9 @@ if (__name__=='__main__'):
 
 		observation = next_observation.copy()
 
-		t1_reset_time = time.time()
+
+		##########  reset if done + update logs
+		# t1_reset_time = time.time()
 		if done.max():
 			traj.append(observation["observation"].copy())
 
@@ -538,9 +479,10 @@ if (__name__=='__main__'):
 				else:
 					f_trajs.append(traj)
 				traj = []
-		t2_reset_time = time.time()
+		# t2_reset_time = time.time()
 		# print("reset time = ", t2_reset_time - t1_reset_time)
 
 	f_ratio.close()
 	f_critic_loss.close()
 	f_values.close()
+	f_nb_skills.close()
